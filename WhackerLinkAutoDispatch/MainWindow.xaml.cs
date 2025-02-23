@@ -255,12 +255,26 @@ namespace WhackerLinkAutoDispatch
                     selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
                 });
 
+                byte[] firstPcm = await GetPCMDataFromMurf();
+                if (firstPcm == null)
+                {
+                    Debug.WriteLine("Failed to retrieve PCM data.");
+                    return;
+                }
+
+                byte[] secondPcm = await GetPCMDataFromMurf(true);
+                if (secondPcm == null)
+                {
+                    Debug.WriteLine("Failed to retrieve PCM second data.");
+                    return;
+                }
+
                 await SendWavFileToPeer(peer, Path.Combine(Directory.GetCurrentDirectory(), "avdtones.wav"));
 
-                await SendNetworkPCM();
+                await SendNetworkPCM(firstPcm);
 
                 if (dispatchTemplate.Repeat)
-                    await SendNetworkPCM(true);
+                    await SendNetworkPCM(secondPcm, true);
 
 
                 if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
@@ -291,15 +305,8 @@ namespace WhackerLinkAutoDispatch
         /// </summary>
         /// <param name="second"></param>
         /// <returns></returns>
-        private async Task<bool> SendNetworkPCM(bool second = false)
+        private async Task<bool> SendNetworkPCM(byte[] pcmData, bool second = false)
         {
-            byte[] pcmData = await GetPCMDataFromMurf(second);
-            if (pcmData == null)
-            {
-                Debug.WriteLine("Failed to retrieve PCM data.");
-                return false;
-            }
-
             //Debug.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
 
             if (dispatchTemplate.Dvm != null && dispatchTemplate.Dvm.Enabled)
