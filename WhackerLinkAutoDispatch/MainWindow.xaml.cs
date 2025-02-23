@@ -35,6 +35,9 @@ using WhackerLinkLib.Network;
 using Microsoft.Win32;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using System.Net.Sockets;
+using System.Net;
+using WhackerLinkLib.Utils;
 
 namespace WhackerLinkAutoDispatch
 {
@@ -51,6 +54,9 @@ namespace WhackerLinkAutoDispatch
         private IPeer peer = new Peer();
 
         private readonly SemaphoreSlim playbackLock = new SemaphoreSlim(1, 1);
+
+        private int sampleSize = 1600; // 100ms at 8000Hz (whackerlink)
+        private int delay = 100; // 100ms at 8000Hz (whackerlink)
 
         private bool pressed = false;
 
@@ -179,28 +185,31 @@ namespace WhackerLinkAutoDispatch
             var selectedChannelName = ChannelSelector.SelectedItem.ToString();
             var selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
 
-            peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port);
-
-            voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
-            voiceChannel.DstId = selectedChannel.DstId;
-            voiceChannel.Site = dispatchTemplate.Network.Site;
-
-            peer.OnVoiceChannelResponse += async (GRP_VCH_RSP response) =>
+            if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
             {
-                if (!pressed)
-                    return;
+                peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port);
 
-                if ((response.DstId != selectedChannel.DstId || response.SrcId != dispatchTemplate.Network.SrcId) || (ResponseType)response.Status != ResponseType.GRANT)
+                voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
+                voiceChannel.DstId = selectedChannel.DstId;
+                voiceChannel.Site = dispatchTemplate.Network.Site;
+
+                peer.OnVoiceChannelResponse += async (GRP_VCH_RSP response) =>
                 {
-                    Debug.WriteLine("Failed");
-                    return;
-                }
+                    if (!pressed)
+                        return;
 
-                voiceChannel.Frequency = response.Channel;
+                    if ((response.DstId != selectedChannel.DstId || response.SrcId != dispatchTemplate.Network.SrcId) || (ResponseType)response.Status != ResponseType.GRANT)
+                    {
+                        Debug.WriteLine("Failed");
+                        return;
+                    }
 
-                Debug.WriteLine("Voice channel assigned. Sending PCM data...");
-                await SendPCMToPeer(peer);
-            };
+                    voiceChannel.Frequency = response.Channel;
+
+                    Debug.WriteLine("Voice channel assigned. Sending PCM data...");
+                    await SendPCMToPeer(peer);
+                };
+            }
         }
 
         /// <summary>
@@ -212,14 +221,20 @@ namespace WhackerLinkAutoDispatch
         {
             pressed = true;
 
-            GRP_VCH_REQ vchReq = new GRP_VCH_REQ
+            if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
             {
-                SrcId = dispatchTemplate.Network.SrcId,
-                DstId = voiceChannel.DstId,
-                Site = dispatchTemplate.Network.Site
-            };
+                GRP_VCH_REQ vchReq = new GRP_VCH_REQ
+                {
+                    SrcId = dispatchTemplate.Network.SrcId,
+                    DstId = voiceChannel.DstId,
+                    Site = dispatchTemplate.Network.Site
+                };
 
-            peer.SendMessage(vchReq.GetData());
+                peer.SendMessage(vchReq.GetData());
+            } else
+            {
+                await SendPCMToPeer(peer);
+            }
         }
 
         /// <summary>
@@ -247,17 +262,21 @@ namespace WhackerLinkAutoDispatch
                 if (dispatchTemplate.Repeat)
                     await SendNetworkPCM(true);
 
-                GRP_VCH_RLS vchRelease = new GRP_VCH_RLS
+
+                if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
                 {
-                    Channel = voiceChannel.Frequency,
-                    SrcId = dispatchTemplate.Network.SrcId,
-                    DstId = selectedChannel.DstId,
-                    Site = dispatchTemplate.Network.Site
-                };
+                    GRP_VCH_RLS vchRelease = new GRP_VCH_RLS
+                    {
+                        Channel = voiceChannel.Frequency,
+                        SrcId = dispatchTemplate.Network.SrcId,
+                        DstId = selectedChannel.DstId,
+                        Site = dispatchTemplate.Network.Site
+                    };
 
-                peer.SendMessage(vchRelease.GetData());
+                    peer.SendMessage(vchRelease.GetData());
 
-                voiceChannel.Frequency = null;
+                    voiceChannel.Frequency = null;
+                }
 
                 pressed = false;
             }
@@ -281,8 +300,14 @@ namespace WhackerLinkAutoDispatch
                 return false;
             }
 
-            const int sampleSize = 1600; // 100ms at 8000Hz
-                                         //Debug.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
+            //Debug.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
+
+            if (dispatchTemplate.Dvm != null && dispatchTemplate.Dvm.Enabled)
+            {
+                // DVM bridge
+                sampleSize = 320;
+                delay = 20;
+            }
 
             Stopwatch stopwatch = new Stopwatch();
 
@@ -296,16 +321,35 @@ namespace WhackerLinkAutoDispatch
 
                 // Debug.WriteLine($"Sending chunk: {i / sampleSize + 1} | Size: {chunk.Length} bytes");
 
-                AudioPacket packet = new AudioPacket
+                if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
                 {
-                    Data = chunk,
-                    VoiceChannel = voiceChannel
-                };
+                    AudioPacket packet = new AudioPacket
+                    {
+                        Data = chunk,
+                        VoiceChannel = voiceChannel
+                    };
 
-                peer.SendMessage(packet.GetData());
+                    peer.SendMessage(packet.GetData());
+                }
+                else
+                {
+                    byte[] udpPayload = new byte[324]; // length + PCM
+
+
+                    byte[] lengthBytes = BitConverter.GetBytes(sampleSize);
+
+                    Array.Reverse(lengthBytes);
+
+                    Array.Copy(lengthBytes, udpPayload, 4);
+                    Array.Copy(chunk, 0, udpPayload, 4, sampleSize);
+
+                    //Debug.WriteLine(BitConverter.ToString(udpPayload));
+
+                    SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
+                }
 
                 stopwatch.Stop();
-                int sleepTime = 100 - (int)stopwatch.ElapsedMilliseconds;
+                int sleepTime = delay - (int)stopwatch.ElapsedMilliseconds;
                 if (sleepTime > 0)
                     await Task.Delay(sleepTime);
             }
@@ -425,10 +469,9 @@ namespace WhackerLinkAutoDispatch
                     pcmProvider.CopyTo(pcmStream);
                     byte[] pcmData = pcmStream.ToArray();
 
-                    const int sampleSize = 1600; // 100ms at 8000Hz
                     Stopwatch stopwatch = new Stopwatch();
 
-                    Debug.WriteLine($"Sending '{filePath}' ({pcmData.Length} bytes) before TTS audio.");
+                    //Debug.WriteLine($"Sending '{filePath}' ({pcmData.Length} bytes) before TTS audio.");
 
                     for (int i = 0; i < pcmData.Length; i += sampleSize)
                     {
@@ -438,17 +481,36 @@ namespace WhackerLinkAutoDispatch
                         byte[] chunk = new byte[sampleSize];
                         Array.Copy(pcmData, i, chunk, 0, remaining);
 
-                        AudioPacket packet = new AudioPacket
+                        if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
                         {
-                            Data = chunk,
-                            VoiceChannel = voiceChannel,
-                            LopServerVocode = true
-                        };
+                            AudioPacket packet = new AudioPacket
+                            {
+                                Data = chunk,
+                                VoiceChannel = voiceChannel,
+                                LopServerVocode = true
+                            };
 
-                        peer.SendMessage(packet.GetData());
+                            peer.SendMessage(packet.GetData());
+                        }
+                        else
+                        {
+                            byte[] udpPayload = new byte[324]; // length + PCM
+
+
+                            byte[] lengthBytes = BitConverter.GetBytes(sampleSize);
+
+                            Array.Reverse(lengthBytes);
+
+                            Array.Copy(lengthBytes, udpPayload, 4);
+                            Array.Copy(chunk, 0, udpPayload, 4, sampleSize);
+
+                            // Debug.WriteLine(BitConverter.ToString(udpPayload));
+
+                            SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
+                        }
 
                         stopwatch.Stop();
-                        int sleepTime = 100 - (int)stopwatch.ElapsedMilliseconds;
+                        int sleepTime = delay - (int)stopwatch.ElapsedMilliseconds;
                         if (sleepTime > 0)
                             await Task.Delay(sleepTime);
                     }
@@ -459,6 +521,31 @@ namespace WhackerLinkAutoDispatch
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error sending WAV file '{filePath}': {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Helper to send byte[] to UDP endpoint
+        /// </summary>
+        /// <param name="ipAddress"></param>
+        /// <param name="port"></param>
+        /// <param name="data"></param>
+        public static void SendUDP(string ipAddress, int port, byte[] data)
+        {
+            using (UdpClient udpClient = new UdpClient())
+            {
+                try
+                {
+                    IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
+
+                    udpClient.Send(data, data.Length, endPoint);
+
+                    Console.WriteLine($"Sent {data.Length} bytes to {ipAddress}:{port}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error sending UDP data: {ex.Message}");
+                }
             }
         }
 
@@ -491,7 +578,18 @@ namespace WhackerLinkAutoDispatch
         public NetworkConfig Network { get; set; }
         public List<Channel> Channels { get; set; }
         public TtsConfig TtsConfig { get; set; }
+        public DvmConfig Dvm { get; set; } = null;
         public List<Field> Fields { get; set; }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public class DvmConfig
+    {
+        public bool Enabled { get; set; } = false;
+        public int Port { get; set; } = 34001;
+        public string Address { get; set; } = "127.0.0.1";
     }
 
     /// <summary>

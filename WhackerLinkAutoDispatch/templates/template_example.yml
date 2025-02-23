@@ -20,6 +20,12 @@ network:
         siteID: "1"
         systemID: "1"
 
+dvm:
+    # This disables all WhackerLink comms when true
+    enabled: false
+    address: 127.0.0.1
+    port: 32001
+
 ttsConfig:
     pitch: -8
     rate: -8
