@@ -514,7 +514,7 @@ namespace WhackerLinkAutoDispatch
                             Array.Copy(lengthBytes, udpPayload, 4);
                             Array.Copy(chunk, 0, udpPayload, 4, sampleSize);
 
-                            Debug.WriteLine(BitConverter.ToString(udpPayload));
+                            // Debug.WriteLine(BitConverter.ToString(udpPayload));
 
                             SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
                         }
