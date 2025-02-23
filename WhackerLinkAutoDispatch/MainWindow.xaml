@@ -35,7 +35,7 @@
         </ScrollViewer>
 
         <!-- Bottom Buttons: Clear & Dispatch Now -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20" VerticalAlignment="Bottom">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" VerticalAlignment="Top">
             <Button Content="Clear" Height="40" Width="150" Margin="0,0,10,0"
                     Background="#FFB74D" Foreground="White" FontSize="16" FontWeight="SemiBold"
                     BorderThickness="0" Cursor="Hand" Click="ClearFields_Click"/>
