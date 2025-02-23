@@ -38,6 +38,9 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace WhackerLinkAutoDispatch
 {
+    /// <summary>
+    /// MainWindow
+    /// </summary>
     public partial class MainWindow : Window
     {
         private List<(Field FieldInfo, Control InputControl)> dynamicControls = new();
@@ -51,11 +54,19 @@ namespace WhackerLinkAutoDispatch
 
         private bool pressed = false;
 
+        /// <summary>
+        /// Creates an instance of <see cref="MainWindow"/>
+        /// </summary>
         public MainWindow()
         {
             InitializeComponent();
         }
 
+        /// <summary>
+        /// Clears all field selected values
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void ClearFields_Click(object sender, RoutedEventArgs e)
         {
             foreach (var (_, control) in dynamicControls)
@@ -76,6 +87,11 @@ namespace WhackerLinkAutoDispatch
             }
         }
 
+        /// <summary>
+        /// Load template file (config file)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void LoadTemplate_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -89,6 +105,10 @@ namespace WhackerLinkAutoDispatch
             }
         }
 
+        /// <summary>
+        /// Load template file (config file)
+        /// </summary>
+        /// <param name="yamlContent"></param>
         private void LoadTemplate(string yamlContent)
         {
             var deserializer = new DeserializerBuilder()
@@ -183,6 +203,11 @@ namespace WhackerLinkAutoDispatch
             };
         }
 
+        /// <summary>
+        /// Start the dispatch
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void DispatchNow_Click(object sender, RoutedEventArgs e)
         {
             pressed = true;
@@ -197,6 +222,11 @@ namespace WhackerLinkAutoDispatch
             peer.SendMessage(vchReq.GetData());
         }
 
+        /// <summary>
+        /// Send the dispatch to the master
+        /// </summary>
+        /// <param name="peer"></param>
+        /// <returns></returns>
         private async Task SendPCMToPeer(IPeer peer)
         {
             await playbackLock.WaitAsync();
@@ -237,6 +267,11 @@ namespace WhackerLinkAutoDispatch
             }
         }
 
+        /// <summary>
+        /// Send PCM to the network
+        /// </summary>
+        /// <param name="second"></param>
+        /// <returns></returns>
         private async Task<bool> SendNetworkPCM(bool second = false)
         {
             byte[] pcmData = await GetPCMDataFromMurf(second);
@@ -278,6 +313,11 @@ namespace WhackerLinkAutoDispatch
             return true;
         }
 
+        /// <summary>
+        /// Get PCM from the Murf API
+        /// </summary>
+        /// <param name="second"></param>
+        /// <returns></returns>
         private async Task<byte[]> GetPCMDataFromMurf(bool second = false)
         {
             try
@@ -361,6 +401,12 @@ namespace WhackerLinkAutoDispatch
             }
         }
 
+        /// <summary>
+        /// Send wav file to the master
+        /// </summary>
+        /// <param name="peer"></param>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
         private async Task SendWavFileToPeer(IPeer peer, string filePath)
         {
             if (!File.Exists(filePath))
@@ -416,7 +462,11 @@ namespace WhackerLinkAutoDispatch
             }
         }
 
-
+        /// <summary>
+        /// Helper to convert wav data to raw PCM
+        /// </summary>
+        /// <param name="wavData"></param>
+        /// <returns></returns>
         private byte[] ConvertWavToPcm(byte[] wavData)
         {
             using (var wavStream = new MemoryStream(wavData))
@@ -430,6 +480,9 @@ namespace WhackerLinkAutoDispatch
         }
     }
 
+    /// <summary>
+    /// Config template object
+    /// </summary>
     public class DispatchTemplate
     {
         public string TemplateName { get; set; }
@@ -441,12 +494,18 @@ namespace WhackerLinkAutoDispatch
         public List<Field> Fields { get; set; }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public class Channel
     {
         public string Name { get; set; }
         public string DstId { get; set; }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public class NetworkConfig
     {
         public string Address { get; set; }
@@ -455,12 +514,18 @@ namespace WhackerLinkAutoDispatch
         public string SrcId { get; set; } = "1";
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public class TtsConfig
     {
         public int Rate { get; set; } = -8;
         public int Pitch { get; set; } = -8;
     }
-
+    
+    /// <summary>
+    /// 
+    /// </summary>
     public class Field
     {
         public string Name { get; set; }
