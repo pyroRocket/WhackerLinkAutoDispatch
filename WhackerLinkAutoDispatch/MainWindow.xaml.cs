@@ -182,6 +182,13 @@ namespace WhackerLinkAutoDispatch
                 }
             }
 
+            if (dispatchTemplate.Dvm != null && dispatchTemplate.Dvm.Enabled)
+            {
+                // DVM bridge
+                sampleSize = 320;
+                delay = 20;
+            }
+
             var selectedChannelName = ChannelSelector.SelectedItem.ToString();
             var selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
 
@@ -309,13 +316,6 @@ namespace WhackerLinkAutoDispatch
         {
             //Debug.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
 
-            if (dispatchTemplate.Dvm != null && dispatchTemplate.Dvm.Enabled)
-            {
-                // DVM bridge
-                sampleSize = 320;
-                delay = 20;
-            }
-
             Stopwatch stopwatch = new Stopwatch();
 
             for (int i = 0; i < pcmData.Length; i += sampleSize)
@@ -381,6 +381,9 @@ namespace WhackerLinkAutoDispatch
                     foreach (var (field, control) in dynamicControls)
                     {
                         if (second && field.NoRepeat)
+                            continue;
+
+                        if (!second && field.EndOnly)
                             continue;
 
                         if (control is TextBox tb)
@@ -511,7 +514,7 @@ namespace WhackerLinkAutoDispatch
                             Array.Copy(lengthBytes, udpPayload, 4);
                             Array.Copy(chunk, 0, udpPayload, 4, sampleSize);
 
-                            // Debug.WriteLine(BitConverter.ToString(udpPayload));
+                            Debug.WriteLine(BitConverter.ToString(udpPayload));
 
                             SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
                         }
@@ -638,6 +641,7 @@ namespace WhackerLinkAutoDispatch
         public bool IncludeFieldName { get; set; } = false;
         public bool Multiple { get; set; } = false;
         public bool NoRepeat { get; set; } = false;
+        public bool EndOnly { get; set; } = false;
         public string Separator { get; set; } = ", ";
         public string Ender { get; set; } = "";
         public List<string> Options { get; set; }
