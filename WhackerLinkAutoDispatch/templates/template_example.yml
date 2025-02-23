@@ -1,5 +1,7 @@
 templateName: "Fire Dispatch"
 
+murfApiKey: ""
+
 channels:
     - name: "Channel 1"
       dstId: "2001"

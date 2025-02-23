@@ -282,7 +282,7 @@ namespace WhackerLinkAutoDispatch
                 );
 
                 httpClient.DefaultRequestHeaders.Clear();
-                httpClient.DefaultRequestHeaders.Add("api-key", "ap2_c11382c1-b4b1-41e7-b76e-3474adc1da24");
+                httpClient.DefaultRequestHeaders.Add("api-key", dispatchTemplate.MurfApiKey);
                 httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
                 var response = await httpClient.PostAsync("https://api.murf.ai/v1/speech/generate", requestContent);
@@ -323,6 +323,7 @@ namespace WhackerLinkAutoDispatch
     public class DispatchTemplate
     {
         public string TemplateName { get; set; }
+        public string MurfApiKey { get; set; }
         public NetworkConfig Network { get; set; }
         public List<Channel> Channels { get; set; }
         public List<Field> Fields { get; set; }
