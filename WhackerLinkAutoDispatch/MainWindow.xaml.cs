@@ -1,4 +1,24 @@
-﻿using System;
+﻿/*
+* WhackerLink - WhackerLink Auto Dispatch
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+* 
+* Copyright (C) 2024 Caleb, K4PHP
+* 
+*/
+
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -34,6 +54,26 @@ namespace WhackerLinkAutoDispatch
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        private void ClearFields_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var (_, control) in dynamicControls)
+            {
+                switch (control)
+                {
+                    case TextBox tb:
+                        tb.Clear();
+                        break;
+                    case ComboBox cb:
+                        if (cb.Items.Count > 0)
+                            cb.SelectedIndex = 0;
+                        break;
+                    case ListBox lb:
+                        lb.UnselectAll();
+                        break;
+                }
+            }
         }
 
         private void LoadTemplate_Click(object sender, RoutedEventArgs e)
@@ -170,42 +210,12 @@ namespace WhackerLinkAutoDispatch
                     selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
                 });
 
-                byte[] pcmData = await GetPCMDataFromMurf();
-                if (pcmData == null)
-                {
-                    Debug.WriteLine("Failed to retrieve PCM data.");
-                    return;
-                }
+                await SendWavFileToPeer(peer, Path.Combine(Directory.GetCurrentDirectory(), "avdtones.wav"));
 
-                const int sampleSize = 1600; // 100ms at 8000Hz
-                //Debug.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
+                await SendNetworkPCM();
 
-                Stopwatch stopwatch = new Stopwatch();
-
-                for (int i = 0; i < pcmData.Length; i += sampleSize)
-                {
-                    stopwatch.Restart();
-
-                    int remaining = Math.Min(sampleSize, pcmData.Length - i);
-                    byte[] chunk = new byte[sampleSize];
-                    Array.Copy(pcmData, i, chunk, 0, remaining);
-
-                    // Debug.WriteLine($"Sending chunk: {i / sampleSize + 1} | Size: {chunk.Length} bytes");
-
-                    AudioPacket packet = new AudioPacket
-                    {
-                        Data = chunk,
-                        VoiceChannel = voiceChannel
-                    };
-
-                    peer.SendMessage(packet.GetData());
-
-                    stopwatch.Stop();
-                    int sleepTime = 100 - (int)stopwatch.ElapsedMilliseconds;
-                    if (sleepTime > 0)
-                        await Task.Delay(sleepTime);
-                }
-
+                if (dispatchTemplate.Repeat)
+                    await SendNetworkPCM(true);
 
                 GRP_VCH_RLS vchRelease = new GRP_VCH_RLS
                 {
@@ -227,7 +237,48 @@ namespace WhackerLinkAutoDispatch
             }
         }
 
-        private async Task<byte[]> GetPCMDataFromMurf()
+        private async Task<bool> SendNetworkPCM(bool second = false)
+        {
+            byte[] pcmData = await GetPCMDataFromMurf(second);
+            if (pcmData == null)
+            {
+                Debug.WriteLine("Failed to retrieve PCM data.");
+                return false;
+            }
+
+            const int sampleSize = 1600; // 100ms at 8000Hz
+                                         //Debug.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
+
+            Stopwatch stopwatch = new Stopwatch();
+
+            for (int i = 0; i < pcmData.Length; i += sampleSize)
+            {
+                stopwatch.Restart();
+
+                int remaining = Math.Min(sampleSize, pcmData.Length - i);
+                byte[] chunk = new byte[sampleSize];
+                Array.Copy(pcmData, i, chunk, 0, remaining);
+
+                // Debug.WriteLine($"Sending chunk: {i / sampleSize + 1} | Size: {chunk.Length} bytes");
+
+                AudioPacket packet = new AudioPacket
+                {
+                    Data = chunk,
+                    VoiceChannel = voiceChannel
+                };
+
+                peer.SendMessage(packet.GetData());
+
+                stopwatch.Stop();
+                int sleepTime = 100 - (int)stopwatch.ElapsedMilliseconds;
+                if (sleepTime > 0)
+                    await Task.Delay(sleepTime);
+            }
+
+            return true;
+        }
+
+        private async Task<byte[]> GetPCMDataFromMurf(bool second = false)
         {
             try
             {
@@ -238,6 +289,9 @@ namespace WhackerLinkAutoDispatch
                     List<string> messageParts = new();
                     foreach (var (field, control) in dynamicControls)
                     {
+                        if (second && field.NoRepeat)
+                            continue;
+
                         if (control is TextBox tb)
                         {
                             if (!string.IsNullOrWhiteSpace(tb.Text))
@@ -246,6 +300,7 @@ namespace WhackerLinkAutoDispatch
                         else if (control is ComboBox cb)
                         {
                             var value = cb.SelectedItem?.ToString() ?? "";
+
                             if (!string.IsNullOrWhiteSpace(value))
                                 messageParts.Add((field.IncludeFieldName ? $"{field.Name} {value}" : value) + field.Ender);
                         }
@@ -267,8 +322,8 @@ namespace WhackerLinkAutoDispatch
                     voiceId = "en-US-charlotte",
                     style = "Promo",
                     text = text,
-                    rate = -8,
-                    pitch = -8,
+                    rate = dispatchTemplate.TtsConfig.Rate,
+                    pitch = dispatchTemplate.TtsConfig.Pitch,
                     sampleRate = 8000,
                     format = "WAV",
                     channelType = "MONO",
@@ -295,7 +350,6 @@ namespace WhackerLinkAutoDispatch
                     .GetProperty("audioFile")
                     .GetString();
 
-
                 var wavData = await httpClient.GetByteArrayAsync(audioUrl);
 
                 return ConvertWavToPcm(wavData);
@@ -306,6 +360,62 @@ namespace WhackerLinkAutoDispatch
                 return null;
             }
         }
+
+        private async Task SendWavFileToPeer(IPeer peer, string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                Debug.WriteLine($"File '{filePath}' not found. Skipping pre-tone playback.");
+                return;
+            }
+
+            try
+            {
+                using (var wavStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                using (var reader = new WaveFileReader(wavStream))
+                using (var pcmStream = new MemoryStream())
+                using (var pcmProvider = new WaveFormatConversionStream(new WaveFormat(8000, 16, 1), reader))
+                {
+                    pcmProvider.CopyTo(pcmStream);
+                    byte[] pcmData = pcmStream.ToArray();
+
+                    const int sampleSize = 1600; // 100ms at 8000Hz
+                    Stopwatch stopwatch = new Stopwatch();
+
+                    Debug.WriteLine($"Sending '{filePath}' ({pcmData.Length} bytes) before TTS audio.");
+
+                    for (int i = 0; i < pcmData.Length; i += sampleSize)
+                    {
+                        stopwatch.Restart();
+
+                        int remaining = Math.Min(sampleSize, pcmData.Length - i);
+                        byte[] chunk = new byte[sampleSize];
+                        Array.Copy(pcmData, i, chunk, 0, remaining);
+
+                        AudioPacket packet = new AudioPacket
+                        {
+                            Data = chunk,
+                            VoiceChannel = voiceChannel,
+                            LopServerVocode = true
+                        };
+
+                        peer.SendMessage(packet.GetData());
+
+                        stopwatch.Stop();
+                        int sleepTime = 100 - (int)stopwatch.ElapsedMilliseconds;
+                        if (sleepTime > 0)
+                            await Task.Delay(sleepTime);
+                    }
+                }
+
+                Debug.WriteLine($"Finished sending '{filePath}'.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error sending WAV file '{filePath}': {ex.Message}");
+            }
+        }
+
 
         private byte[] ConvertWavToPcm(byte[] wavData)
         {
@@ -324,8 +434,10 @@ namespace WhackerLinkAutoDispatch
     {
         public string TemplateName { get; set; }
         public string MurfApiKey { get; set; }
+        public bool Repeat { get; set; } = false;
         public NetworkConfig Network { get; set; }
         public List<Channel> Channels { get; set; }
+        public TtsConfig TtsConfig { get; set; }
         public List<Field> Fields { get; set; }
     }
 
@@ -343,12 +455,19 @@ namespace WhackerLinkAutoDispatch
         public string SrcId { get; set; } = "1";
     }
 
+    public class TtsConfig
+    {
+        public int Rate { get; set; } = -8;
+        public int Pitch { get; set; } = -8;
+    }
+
     public class Field
     {
         public string Name { get; set; }
         public string Type { get; set; }
         public bool IncludeFieldName { get; set; } = false;
         public bool Multiple { get; set; } = false;
+        public bool NoRepeat { get; set; } = false;
         public string Separator { get; set; } = ", ";
         public string Ender { get; set; } = "";
         public List<string> Options { get; set; }
