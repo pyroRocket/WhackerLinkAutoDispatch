@@ -2,6 +2,8 @@ templateName: "Fire Dispatch"
 
 murfApiKey: ""
 
+repeat: true
+
 channels:
     - name: "Channel 1"
       dstId: "2001"
@@ -17,6 +19,10 @@ network:
         controlChannel: "772.74375"
         siteID: "1"
         systemID: "1"
+
+ttsConfig:
+    pitch: -8
+    rate: -8
 
 fields:
   - name: "Departments"
