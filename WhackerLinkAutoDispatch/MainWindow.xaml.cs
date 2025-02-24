@@ -531,10 +531,8 @@ namespace WhackerLinkAutoDispatch
                             SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
                         }
 
-                        stopwatch.Stop();
                         int sleepTime = delay - (int)stopwatch.ElapsedMilliseconds;
-                        if (sleepTime > 0)
-                            await Task.Delay(sleepTime);
+                        while (stopwatch.ElapsedMilliseconds < delay) { /* stub */ }
                     }
                 }
 
