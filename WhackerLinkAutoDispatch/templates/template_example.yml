@@ -48,7 +48,8 @@ fields:
     includeFieldName: false
     ender: ".... "
 
-  - name: "Respond on"
+  - name: "Channel"
+    saidName: "Respond on"
     type: "Dropdown"
     ender: ".... "
     includeFieldName: true

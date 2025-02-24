@@ -402,14 +402,14 @@ namespace WhackerLinkAutoDispatch
                         if (control is TextBox tb)
                         {
                             if (!string.IsNullOrWhiteSpace(tb.Text))
-                                messageParts.Add((field.IncludeFieldName ? $"{field.Name} {tb.Text}" : tb.Text) + field.Ender);
+                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty ? $"{field.SaidName} {tb.Text}" : tb.Text) + field.Ender);
                         }
                         else if (control is ComboBox cb)
                         {
                             var value = cb.SelectedItem?.ToString() ?? "";
 
                             if (!string.IsNullOrWhiteSpace(value))
-                                messageParts.Add((field.IncludeFieldName ? $"{field.Name} {value}" : value) + field.Ender);
+                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty ? $"{field.SaidName} {value}" : value) + field.Ender);
                         }
                         else if (control is ListBox lb)
                         {
@@ -417,7 +417,7 @@ namespace WhackerLinkAutoDispatch
                             if (selectedItems.Any())
                             {
                                 var joined = string.Join(field.Separator ?? ", ", selectedItems);
-                                messageParts.Add((field.IncludeFieldName ? $"{field.Name} {joined}" : joined) + field.Ender);
+                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty ? $"{field.SaidName} {joined}" : joined) + field.Ender);
                             }
                         }
                     }
@@ -650,6 +650,7 @@ namespace WhackerLinkAutoDispatch
     public class Field
     {
         public string Name { get; set; }
+        public string SaidName { get; set; }
         public string Type { get; set; }
         public bool IncludeFieldName { get; set; } = false;
         public bool Multiple { get; set; } = false;
