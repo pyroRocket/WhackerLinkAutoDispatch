@@ -197,7 +197,6 @@ namespace WhackerLinkAutoDispatch
                 peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port);
 
                 voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
-                voiceChannel.DstId = selectedChannel.DstId;
                 voiceChannel.Site = dispatchTemplate.Network.Site;
 
                 peer.OnVoiceChannelResponse += async (GRP_VCH_RSP response) =>
@@ -205,9 +204,9 @@ namespace WhackerLinkAutoDispatch
                     if (!pressed)
                         return;
 
-                    if ((response.DstId != selectedChannel.DstId || response.SrcId != dispatchTemplate.Network.SrcId) || (ResponseType)response.Status != ResponseType.GRANT)
+                    if ((response.DstId != voiceChannel.DstId || response.SrcId != dispatchTemplate.Network.SrcId) || (ResponseType)response.Status != ResponseType.GRANT)
                     {
-                        Debug.WriteLine("Failed");
+                        //Debug.WriteLine("Failed");
                         return;
                     }
 
@@ -228,8 +227,16 @@ namespace WhackerLinkAutoDispatch
         {
             pressed = true;
 
-            if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
+            if (dispatchTemplate.Dvm == null || !dispatchTemplate.Dvm.Enabled)
             {
+                Dispatcher.Invoke(() =>
+                {
+                    var selectedChannelName = ChannelSelector.SelectedItem.ToString();
+                    var selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+
+                    voiceChannel.DstId = selectedChannel.DstId;
+                });
+
                 GRP_VCH_REQ vchReq = new GRP_VCH_REQ
                 {
                     SrcId = dispatchTemplate.Network.SrcId,
@@ -260,6 +267,8 @@ namespace WhackerLinkAutoDispatch
                 {
                     var selectedChannelName = ChannelSelector.SelectedItem.ToString();
                     selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+
+                    voiceChannel.DstId = selectedChannel.DstId;
                 });
 
                 byte[] firstPcm = await GetPCMDataFromMurf();
@@ -514,7 +523,7 @@ namespace WhackerLinkAutoDispatch
                             Array.Copy(lengthBytes, udpPayload, 4);
                             Array.Copy(chunk, 0, udpPayload, 4, sampleSize);
 
-                            Debug.WriteLine(BitConverter.ToString(udpPayload));
+                            // Debug.WriteLine(BitConverter.ToString(udpPayload));
 
                             SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
                         }
