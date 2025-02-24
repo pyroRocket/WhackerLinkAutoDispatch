@@ -28,7 +28,7 @@ dvm:
 
 ttsConfig:
     pitch: -8
-    rate: -8
+    rate: 10
 
 fields:
   - name: "Departments"
