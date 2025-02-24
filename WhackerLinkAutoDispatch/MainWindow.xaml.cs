@@ -199,7 +199,7 @@ namespace WhackerLinkAutoDispatch
                 voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
                 voiceChannel.Site = dispatchTemplate.Network.Site;
 
-                peer.OnVoiceChannelResponse += async (GRP_VCH_RSP response) =>
+                peer.OnVoiceChannelResponse += (GRP_VCH_RSP response) =>
                 {
                     if (!pressed)
                         return;
@@ -213,7 +213,11 @@ namespace WhackerLinkAutoDispatch
                     voiceChannel.Frequency = response.Channel;
 
                     Debug.WriteLine("Voice channel assigned. Sending PCM data...");
-                    await SendPCMToPeer(peer);
+
+                    Task.Factory.StartNew(() =>
+                    {
+                        SendPCMToPeer(peer);
+                    });
                 };
             }
         }
