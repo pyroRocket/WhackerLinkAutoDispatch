@@ -216,8 +216,9 @@ namespace WhackerLinkAutoDispatch
 
                     Task.Factory.StartNew(() =>
                     {
+                        Thread.CurrentThread.Priority = ThreadPriority.Highest;
                         SendPCMToPeer(peer);
-                    });
+                    }, TaskCreationOptions.LongRunning);
                 };
             }
         }
@@ -368,10 +369,8 @@ namespace WhackerLinkAutoDispatch
                     SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
                 }
 
-                stopwatch.Stop();
                 int sleepTime = delay - (int)stopwatch.ElapsedMilliseconds;
-                if (sleepTime > 0)
-                    await Task.Delay(sleepTime);
+                while (stopwatch.ElapsedMilliseconds < delay) { /* stub */ }
             }
 
             return true;
