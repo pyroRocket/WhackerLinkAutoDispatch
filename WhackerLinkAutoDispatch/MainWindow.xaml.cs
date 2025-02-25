@@ -560,7 +560,7 @@ namespace WhackerLinkAutoDispatch
 
                     udpClient.Send(data, data.Length, endPoint);
 
-                    Console.WriteLine($"Sent {data.Length} bytes to {ipAddress}:{port}");
+                    // Console.WriteLine($"Sent {data.Length} bytes to {ipAddress}:{port}");
                 }
                 catch (Exception ex)
                 {
