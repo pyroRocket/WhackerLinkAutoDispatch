@@ -194,6 +194,9 @@ namespace WhackerLinkAutoDispatch
 
             if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
             {
+                if (peer.IsConnected)
+                    peer.Disconnect();
+
                 peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port);
 
                 voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
