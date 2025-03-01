@@ -297,7 +297,7 @@ namespace WhackerLinkAutoDispatch
                     voiceChannel.DstId = selectedChannel.DstId;
                 });
 
-                if (dispatchTemplate.Imperial !== null) {
+                if (dispatchTemplate.Imperial != null) {
                     if (dispatchTemplate.Imperial.Enabled) {
 
                         ImperialCallRequest callReq = new ImperialCallRequest
