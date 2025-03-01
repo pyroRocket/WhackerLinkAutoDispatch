@@ -30,6 +30,17 @@ ttsConfig:
     pitch: -8
     rate: 10
 
+imperial:
+    enabled: false
+    commId: COMMUNITY_ID
+    apiKey: API_KEY
+
+# Imperial notes:
+# isImperialNote: true - this is used for adding a field to the cad notes
+# isImperialNature: true - REQUIRED FOR IMPERIAL this is used for making a field be the call notes in the CAD (USE ONLY ONCE)
+# isImperialStreet: true - REQUIRED FOR IMPERIAL this is used for making a field be the street in the CAD (USE ONLY ONCE)
+# isImperialPostal: true - REQUIRED FOR IMPERIAL this is used for making a field be the postal in the CAD (USE ONLY ONCE)  
+
 fields:
   - name: "Departments"
     type: "Dropdown"

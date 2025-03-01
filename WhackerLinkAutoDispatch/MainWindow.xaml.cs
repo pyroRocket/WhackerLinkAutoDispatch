@@ -14,7 +14,7 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * 
-* Copyright (C) 2024 Caleb, K4PHP
+* Copyright (C) 2025 Caleb, K4PHP
 * 
 */
 
@@ -38,6 +38,9 @@ using YamlDotNet.Serialization.NamingConventions;
 using System.Net.Sockets;
 using System.Net;
 using WhackerLinkLib.Utils;
+using Newtonsoft.Json;
+using YamlDotNet.Core.Tokens;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace WhackerLinkAutoDispatch
 {
@@ -58,6 +61,8 @@ namespace WhackerLinkAutoDispatch
         private int sampleSize = 1600; // 100ms at 8000Hz (whackerlink)
         private int delay = 100; // 100ms at 8000Hz (whackerlink)
 
+        private const string IMPERIAL_URL = "https://imperialcad.app/api/1.1/wf/CallCreate";
+
         private bool pressed = false;
 
         /// <summary>
@@ -66,6 +71,10 @@ namespace WhackerLinkAutoDispatch
         public MainWindow()
         {
             InitializeComponent();
+
+#if DEBUG
+            ConsoleNative.ShowConsole();
+#endif
         }
 
         /// <summary>
@@ -199,6 +208,15 @@ namespace WhackerLinkAutoDispatch
 
                 peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port);
 
+                GRP_AFF_REQ req = new GRP_AFF_REQ
+                {
+                    DstId = selectedChannel.DstId,
+                    SrcId = dispatchTemplate.Network.SrcId,
+                    Site = dispatchTemplate.Network.Site
+                };
+
+                peer.SendMessage(req.GetData());
+
                 voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
                 voiceChannel.Site = dispatchTemplate.Network.Site;
 
@@ -278,6 +296,83 @@ namespace WhackerLinkAutoDispatch
 
                     voiceChannel.DstId = selectedChannel.DstId;
                 });
+
+                if (dispatchTemplate.Imperial !== null) {
+                    if (dispatchTemplate.Imperial.Enabled) {
+
+                        ImperialCallRequest callReq = new ImperialCallRequest
+                        {
+                            CommId = dispatchTemplate.Imperial.CommId,
+                            Street = "Test Street",             // need
+                            CrossStreet = string.Empty,
+                            Postal = "00000",                   // need
+                            City = string.Empty,
+                            County = string.Empty,
+                            Info = string.Empty,
+                            Nature = "Call Nature",             // need
+                            Status = "ACTIVE",                  // static
+                            Priority = 2                        // static
+                        };
+
+                        List<string> messageParts = new();
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            foreach (var (field, control) in dynamicControls)
+                            {
+                                if (control is TextBox tb)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(tb.Text))
+                                    {
+                                        if (field.IsImperialStreet)
+                                            callReq.Street = tb.Text;
+
+                                        if (field.IsImperialPostal)
+                                            callReq.Postal = tb.Text;
+
+                                        if (field.IsImperialNature)
+                                            callReq.Nature = tb.Text;
+
+                                        if (field.IsImperialNote)
+                                            messageParts.Add(tb.Text);
+                                    }
+                                }
+                                else if (control is ComboBox cb)
+                                {
+                                    var value = cb.SelectedItem?.ToString() ?? "";
+
+                                    if (!string.IsNullOrWhiteSpace(value))
+                                    {
+                                        if (field.IsImperialStreet)
+                                            callReq.Street = value;
+
+                                        if (field.IsImperialPostal)
+                                            callReq.Postal = value;
+
+                                        if (field.IsImperialNature)
+                                            callReq.Nature = value;
+
+                                        if (field.IsImperialNote)
+                                            messageParts.Add(value);
+                                    }
+                                }
+                                else if (control is ListBox lb)
+                                {
+                                    var selectedItems = lb.SelectedItems.Cast<string>();
+                                    if (selectedItems.Any())
+                                    {
+                                        if (field.IsImperialNote)
+                                            messageParts.AddRange(selectedItems);
+                                    }
+                                }
+                            }
+                        });
+
+                        callReq.Info = string.Join(Environment.NewLine, messageParts);
+
+                        SendCallRequestAsync(callReq);
+                    }
+                }
 
                 byte[] firstPcm = await GetPCMDataFromMurf();
                 if (firstPcm == null)
@@ -572,6 +667,27 @@ namespace WhackerLinkAutoDispatch
             }
         }
 
+        public async Task SendCallRequestAsync(ImperialCallRequest callReq)
+        {
+            HttpClient client = new HttpClient();
+
+            var json = JsonConvert.SerializeObject(callReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            content.Headers.Add("APIKEY", dispatchTemplate.Imperial.ApiKey);
+
+            try
+            {
+                HttpResponseMessage response = await client.PostAsync(IMPERIAL_URL, content);
+                response.EnsureSuccessStatusCode();
+                string responseBody = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Response: " + responseBody);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error: " + ex.Message);
+            }
+        }
+
         /// <summary>
         /// Helper to convert wav data to raw PCM
         /// </summary>
@@ -588,76 +704,5 @@ namespace WhackerLinkAutoDispatch
                 return pcmStream.ToArray();
             }
         }
-    }
-
-    /// <summary>
-    /// Config template object
-    /// </summary>
-    public class DispatchTemplate
-    {
-        public string TemplateName { get; set; }
-        public string MurfApiKey { get; set; }
-        public bool Repeat { get; set; } = false;
-        public NetworkConfig Network { get; set; }
-        public List<Channel> Channels { get; set; }
-        public TtsConfig TtsConfig { get; set; }
-        public DvmConfig Dvm { get; set; } = null;
-        public List<Field> Fields { get; set; }
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public class DvmConfig
-    {
-        public bool Enabled { get; set; } = false;
-        public int Port { get; set; } = 34001;
-        public string Address { get; set; } = "127.0.0.1";
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public class Channel
-    {
-        public string Name { get; set; }
-        public string DstId { get; set; }
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public class NetworkConfig
-    {
-        public string Address { get; set; }
-        public int Port { get; set; }
-        public Site Site { get; set; }
-        public string SrcId { get; set; } = "1";
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public class TtsConfig
-    {
-        public int Rate { get; set; } = -8;
-        public int Pitch { get; set; } = -8;
-    }
-    
-    /// <summary>
-    /// 
-    /// </summary>
-    public class Field
-    {
-        public string Name { get; set; }
-        public string SaidName { get; set; }
-        public string Type { get; set; }
-        public bool IncludeFieldName { get; set; } = false;
-        public bool Multiple { get; set; } = false;
-        public bool NoRepeat { get; set; } = false;
-        public bool EndOnly { get; set; } = false;
-        public string Separator { get; set; } = ", ";
-        public string Ender { get; set; } = "";
-        public List<string> Options { get; set; }
     }
 }
