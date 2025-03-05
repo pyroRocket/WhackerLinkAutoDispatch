@@ -65,6 +65,7 @@ namespace WhackerLinkAutoDispatch
     {
         public string Address { get; set; }
         public int Port { get; set; }
+        public string AuthKey { get; set; }
         public Site Site { get; set; }
         public string SrcId { get; set; } = "1";
     }

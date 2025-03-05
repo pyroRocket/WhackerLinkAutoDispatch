@@ -19,6 +19,8 @@
             <Button Content="Load Call Structure" Height="40" Width="150" Margin="10" HorizontalAlignment="Left"
                 VerticalAlignment="Top" Click="LoadTemplate_Click" Cursor="Hand"/>
             <ComboBox x:Name="ChannelSelector" Height="40" Width="160" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Label x:Name="AddCadLbl" Foreground="White" Height="26">Add CAD</Label>
+            <CheckBox x:Name="SendCadBtn" Height="40" Width="19" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
         </StackPanel>
 
         <!-- Bottom Buttons: Clear & Dispatch Now -->

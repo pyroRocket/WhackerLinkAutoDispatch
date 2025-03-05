@@ -75,6 +75,9 @@ namespace WhackerLinkAutoDispatch
 #if DEBUG
             ConsoleNative.ShowConsole();
 #endif
+
+            SendCadBtn.Visibility = Visibility.Collapsed;
+            AddCadLbl.Visibility = Visibility.Collapsed;
         }
 
         /// <summary>
@@ -131,6 +134,15 @@ namespace WhackerLinkAutoDispatch
                 .Build();
 
             dispatchTemplate = deserializer.Deserialize<DispatchTemplate>(yamlContent);
+
+            if (dispatchTemplate.Imperial != null)
+            {
+                if (dispatchTemplate.Imperial.Enabled)
+                {
+                    SendCadBtn.Visibility = Visibility.Visible;
+                    AddCadLbl.Visibility = Visibility.Visible;
+                }
+            }
 
             ChannelSelector.Items.Clear();
 
@@ -206,7 +218,7 @@ namespace WhackerLinkAutoDispatch
                 if (peer.IsConnected)
                     peer.Disconnect();
 
-                peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port);
+                peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port, dispatchTemplate.Network.AuthKey);
 
                 GRP_AFF_REQ req = new GRP_AFF_REQ
                 {
@@ -233,7 +245,7 @@ namespace WhackerLinkAutoDispatch
 
                     voiceChannel.Frequency = response.Channel;
 
-                    Debug.WriteLine("Voice channel assigned. Sending PCM data...");
+                    Console.WriteLine("Voice channel assigned. Sending PCM data...");
 
                     Task.Factory.StartNew(() =>
                     {
@@ -297,94 +309,100 @@ namespace WhackerLinkAutoDispatch
                     voiceChannel.DstId = selectedChannel.DstId;
                 });
 
-                if (dispatchTemplate.Imperial != null) {
-                    if (dispatchTemplate.Imperial.Enabled) {
+                bool sendCad = false;
 
-                        ImperialCallRequest callReq = new ImperialCallRequest
-                        {
-                            CommId = dispatchTemplate.Imperial.CommId,
-                            Street = "Test Street",             // need
-                            CrossStreet = string.Empty,
-                            Postal = "00000",                   // need
-                            City = string.Empty,
-                            County = string.Empty,
-                            Info = string.Empty,
-                            Nature = "Call Nature",             // need
-                            Status = "ACTIVE",                  // static
-                            Priority = 2                        // static
-                        };
+                Dispatcher.Invoke(() => { sendCad = (bool)SendCadBtn.IsChecked; });
 
-                        List<string> messageParts = new();
+                Task.Factory.StartNew(() => {
+                    if (dispatchTemplate.Imperial != null) {
+                        if (dispatchTemplate.Imperial.Enabled && sendCad) {
 
-                        Dispatcher.Invoke(() =>
-                        {
-                            foreach (var (field, control) in dynamicControls)
+                            ImperialCallRequest callReq = new ImperialCallRequest
                             {
-                                if (control is TextBox tb)
+                                CommId = dispatchTemplate.Imperial.CommId,
+                                Street = "Test Street",             // need
+                                CrossStreet = string.Empty,
+                                Postal = "00000",                   // need
+                                City = string.Empty,
+                                County = string.Empty,
+                                Info = string.Empty,
+                                Nature = "Call Nature",             // need
+                                Status = "PENDING",                 // static
+                                Priority = 2                        // static
+                            };
+
+                            List<string> messageParts = new();
+
+                            Dispatcher.Invoke(() =>
+                            {
+                                foreach (var (field, control) in dynamicControls)
                                 {
-                                    if (!string.IsNullOrWhiteSpace(tb.Text))
+                                    if (control is TextBox tb)
                                     {
-                                        if (field.IsImperialStreet)
-                                            callReq.Street = tb.Text;
+                                        if (!string.IsNullOrWhiteSpace(tb.Text))
+                                        {
+                                            if (field.IsImperialStreet)
+                                                callReq.Street = tb.Text;
 
-                                        if (field.IsImperialPostal)
-                                            callReq.Postal = tb.Text;
+                                            if (field.IsImperialPostal)
+                                                callReq.Postal = tb.Text;
 
-                                        if (field.IsImperialNature)
-                                            callReq.Nature = tb.Text;
+                                            if (field.IsImperialNature)
+                                                callReq.Nature = tb.Text;
 
-                                        if (field.IsImperialNote)
-                                            messageParts.Add(tb.Text);
+                                            if (field.IsImperialNote)
+                                                messageParts.Add(tb.Text);
+                                        }
+                                    }
+                                    else if (control is ComboBox cb)
+                                    {
+                                        var value = cb.SelectedItem?.ToString() ?? "";
+
+                                        if (!string.IsNullOrWhiteSpace(value))
+                                        {
+                                            if (field.IsImperialStreet)
+                                                callReq.Street = value;
+
+                                            if (field.IsImperialPostal)
+                                                callReq.Postal = value;
+
+                                            if (field.IsImperialNature)
+                                                callReq.Nature = value;
+
+                                            if (field.IsImperialNote)
+                                                messageParts.Add(value);
+                                        }
+                                    }
+                                    else if (control is ListBox lb)
+                                    {
+                                        var selectedItems = lb.SelectedItems.Cast<string>();
+                                        if (selectedItems.Any())
+                                        {
+                                            if (field.IsImperialNote)
+                                                messageParts.AddRange(selectedItems);
+                                        }
                                     }
                                 }
-                                else if (control is ComboBox cb)
-                                {
-                                    var value = cb.SelectedItem?.ToString() ?? "";
+                            });
 
-                                    if (!string.IsNullOrWhiteSpace(value))
-                                    {
-                                        if (field.IsImperialStreet)
-                                            callReq.Street = value;
+                            callReq.Info = string.Join(Environment.NewLine, messageParts);
 
-                                        if (field.IsImperialPostal)
-                                            callReq.Postal = value;
-
-                                        if (field.IsImperialNature)
-                                            callReq.Nature = value;
-
-                                        if (field.IsImperialNote)
-                                            messageParts.Add(value);
-                                    }
-                                }
-                                else if (control is ListBox lb)
-                                {
-                                    var selectedItems = lb.SelectedItems.Cast<string>();
-                                    if (selectedItems.Any())
-                                    {
-                                        if (field.IsImperialNote)
-                                            messageParts.AddRange(selectedItems);
-                                    }
-                                }
-                            }
-                        });
-
-                        callReq.Info = string.Join(Environment.NewLine, messageParts);
-
-                        SendCallRequestAsync(callReq);
+                            SendCallRequestAsync(callReq);
+                        }
                     }
-                }
+                });
 
                 byte[] firstPcm = await GetPCMDataFromMurf();
                 if (firstPcm == null)
                 {
-                    Debug.WriteLine("Failed to retrieve PCM data.");
+                    Console.WriteLine("Failed to retrieve PCM data.");
                     return;
                 }
 
                 byte[] secondPcm = await GetPCMDataFromMurf(true);
                 if (secondPcm == null)
                 {
-                    Debug.WriteLine("Failed to retrieve PCM second data.");
+                    Console.WriteLine("Failed to retrieve PCM second data.");
                     return;
                 }
 
@@ -409,6 +427,8 @@ namespace WhackerLinkAutoDispatch
                     peer.SendMessage(vchRelease.GetData());
 
                     voiceChannel.Frequency = null;
+
+                    Console.WriteLine("Sent voice channel release");
                 }
 
                 pressed = false;
@@ -426,7 +446,7 @@ namespace WhackerLinkAutoDispatch
         /// <returns></returns>
         private async Task<bool> SendNetworkPCM(byte[] pcmData, bool second = false)
         {
-            //Debug.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
+            Console.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
 
             Stopwatch stopwatch = new Stopwatch();
 
@@ -438,7 +458,7 @@ namespace WhackerLinkAutoDispatch
                 byte[] chunk = new byte[sampleSize];
                 Array.Copy(pcmData, i, chunk, 0, remaining);
 
-                // Debug.WriteLine($"Sending chunk: {i / sampleSize + 1} | Size: {chunk.Length} bytes");
+                Console.WriteLine($"Sending chunk: {i / sampleSize + 1} | Size: {chunk.Length} bytes");
 
                 if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
                 {
@@ -560,7 +580,7 @@ namespace WhackerLinkAutoDispatch
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error during PCM processing: {ex.Message}");
+                Console.WriteLine($"Error during PCM processing: {ex.Message}");
                 return null;
             }
         }
@@ -575,7 +595,7 @@ namespace WhackerLinkAutoDispatch
         {
             if (!File.Exists(filePath))
             {
-                Debug.WriteLine($"File '{filePath}' not found. Skipping pre-tone playback.");
+                Console.WriteLine($"File '{filePath}' not found. Skipping pre-tone playback.");
                 return;
             }
 
@@ -634,11 +654,11 @@ namespace WhackerLinkAutoDispatch
                     }
                 }
 
-                Debug.WriteLine($"Finished sending '{filePath}'.");
+                Console.WriteLine($"Finished sending '{filePath}'.");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error sending WAV file '{filePath}': {ex.Message}");
+                Console.WriteLine($"Error sending WAV file '{filePath}': {ex.Message}");
             }
         }
 
