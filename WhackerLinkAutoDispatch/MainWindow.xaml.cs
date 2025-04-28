@@ -41,6 +41,7 @@ using WhackerLinkLib.Utils;
 using Newtonsoft.Json;
 using YamlDotNet.Core.Tokens;
 using static System.Net.Mime.MediaTypeNames;
+using System.Windows.Media;
 
 namespace WhackerLinkAutoDispatch
 {
@@ -58,8 +59,8 @@ namespace WhackerLinkAutoDispatch
 
         private readonly SemaphoreSlim playbackLock = new SemaphoreSlim(1, 1);
 
-        private int sampleSize = 1600; // 100ms at 8000Hz (whackerlink)
-        private int delay = 100; // 100ms at 8000Hz (whackerlink)
+        private int sampleSize = 1600;  // 100ms at 8000Hz (whackerlink)
+        private int delay = 100;        // 100ms at 8000Hz (whackerlink)
 
         private const string IMPERIAL_URL = "https://imperialcad.app/api/1.1/wf/CallCreate";
 
@@ -231,6 +232,21 @@ namespace WhackerLinkAutoDispatch
 
                 voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
                 voiceChannel.Site = dispatchTemplate.Network.Site;
+
+                peer.OnOpen += () =>
+                {
+                    Dispatcher.Invoke(() => { Background = (Brush)new BrushConverter().ConvertFrom("#222222"); });
+                };
+
+                peer.OnClose += () =>
+                {
+                    Dispatcher.Invoke(() => { Background = Brushes.Red; });
+                };
+
+                peer.OnReconnecting += () =>
+                {
+                    Dispatcher.Invoke(() => { Background = Brushes.Orange; });
+                };
 
                 peer.OnVoiceChannelResponse += (GRP_VCH_RSP response) =>
                 {
