@@ -12,7 +12,7 @@ channels:
 
 network:
     address: "127.0.0.1"
-    port: 3000
+    port: 3016
     authKey: "UNATH"
     srcId: 192
     site:

@@ -740,5 +740,22 @@ namespace WhackerLinkAutoDispatch
                 return pcmStream.ToArray();
             }
         }
+
+        private void ChannelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            string selectedChannelName = ChannelSelector.SelectedItem.ToString();
+            Channel selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+
+            GRP_AFF_REQ affReq = new GRP_AFF_REQ
+            {
+                SrcId = dispatchTemplate.Network.SrcId,
+                DstId = selectedChannel.DstId,
+                Site = dispatchTemplate.Network.Site
+            };
+
+            peer.SendMessage(affReq.GetData());
+
+            Console.WriteLine("Sent WLINK master aff " + selectedChannel.DstId);
+        }
     }
 }
