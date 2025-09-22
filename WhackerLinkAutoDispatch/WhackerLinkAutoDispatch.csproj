@@ -10,12 +10,27 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-preview.7.25380.108" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0-preview.7.25380.108" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4-beta1" />
+    <PackageReference Include="System.Text.Json" Version="10.0.0-preview.7.25380.108" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\WhackerLinkLib\WhackerLinkLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="assets\config2.png" />
+    <Resource Include="assets\config2.png" />
+    <None Remove="assets\send.png" />
+    <Resource Include="assets\send.png" />
+    <None Remove="assets\refresh.png" />
+    <Resource Include="assets\refresh.png" />
+    <None Remove="assets\implogoround2.png" />
+    <Resource Include="assets\implogoround2.png" />
   </ItemGroup>
 
 </Project>

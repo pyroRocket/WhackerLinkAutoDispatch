@@ -1,22 +1,21 @@
 ﻿/*
-* WhackerLink - WhackerLink Auto Dispatch
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-* 
-* Copyright (C) 2025 Caleb, K4PHP
-* 
-*/
+ * WhackerLink - WhackerLink Auto Dispatch
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Copyright (C) 2025 Caleb, K4PHP
+ */
 
 using System;
 using System.Diagnostics;
@@ -42,6 +41,10 @@ using Newtonsoft.Json;
 using YamlDotNet.Core.Tokens;
 using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Media;
+using System.Windows.Threading;
+// NEW:
+using System.Linq;
+using System.Threading;
 
 namespace WhackerLinkAutoDispatch
 {
@@ -66,6 +69,9 @@ namespace WhackerLinkAutoDispatch
 
         private bool pressed = false;
 
+        // FIX: typo + add suppression flag
+        private bool _suppressChannelSelectionChanged;
+
         /// <summary>
         /// Creates an instance of <see cref="MainWindow"/>
         /// </summary>
@@ -78,14 +84,11 @@ namespace WhackerLinkAutoDispatch
 #endif
 
             SendCadBtn.Visibility = Visibility.Collapsed;
-            AddCadLbl.Visibility = Visibility.Collapsed;
         }
 
         /// <summary>
         /// Clears all field selected values
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void ClearFields_Click(object sender, RoutedEventArgs e)
         {
             foreach (var (_, control) in dynamicControls)
@@ -109,14 +112,13 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Load template file (config file)
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void LoadTemplate_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
                 Filter = "YAML files (*.yml)|*.yml|All files (*.*)|*.*"
             };
+
             if (openFileDialog.ShowDialog() == true)
             {
                 string yamlContent = File.ReadAllText(openFileDialog.FileName);
@@ -127,7 +129,6 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Load template file (config file)
         /// </summary>
-        /// <param name="yamlContent"></param>
         private void LoadTemplate(string yamlContent)
         {
             var deserializer = new DeserializerBuilder()
@@ -136,71 +137,80 @@ namespace WhackerLinkAutoDispatch
 
             dispatchTemplate = deserializer.Deserialize<DispatchTemplate>(yamlContent);
 
-            if (dispatchTemplate.Imperial != null)
+            if (dispatchTemplate.Imperial != null && dispatchTemplate.Imperial.Enabled)
             {
-                if (dispatchTemplate.Imperial.Enabled)
-                {
-                    SendCadBtn.Visibility = Visibility.Visible;
-                    AddCadLbl.Visibility = Visibility.Visible;
-                }
+                SendCadBtn.Visibility = Visibility.Visible;
             }
 
-            ChannelSelector.Items.Clear();
+            // Rebuild ChannelSelector safely (suppress events while repopulating)
+            _suppressChannelSelectionChanged = true;
+            ChannelSelector.SelectionChanged -= ChannelSelector_SelectionChanged;
 
+            ChannelSelector.Items.Clear();
             foreach (var channel in dispatchTemplate.Channels)
             {
                 ChannelSelector.Items.Add(channel.Name);
             }
 
             if (ChannelSelector.Items.Count > 0)
-                ChannelSelector.SelectedIndex = 0;
+                ChannelSelector.SelectedIndex = 0; // won't fire handler while suppressed
 
+            ChannelSelector.SelectionChanged += ChannelSelector_SelectionChanged;
+            _suppressChannelSelectionChanged = false;
+
+            // Rebuild dynamic fields
             DynamicFieldsPanel.Children.Clear();
             dynamicControls.Clear();
 
             foreach (var field in dispatchTemplate.Fields)
             {
-                TextBlock label = new() { Text = field.Name, Foreground = System.Windows.Media.Brushes.White, FontSize = 16 };
+                TextBlock label = new()
+                {
+                    Text = field.Name,
+                    Foreground = System.Windows.Media.Brushes.Black,
+                    FontSize = 16
+                };
                 DynamicFieldsPanel.Children.Add(label);
 
                 if (field.Type == "TextBox")
                 {
-                    TextBox textBox = new() { Width = 400, Height = 30, Margin = new Thickness(0, 5, 0, 15) };
+                    TextBox textBox = new()
+                    {
+                        Width = 400,
+                        Height = 30,
+                        Margin = new Thickness(0, 5, 0, 15)
+                    };
                     DynamicFieldsPanel.Children.Add(textBox);
                     dynamicControls.Add((field, textBox));
                 }
                 else if (field.Type == "Dropdown")
                 {
-                    if (field.Type == "Dropdown")
+                    if (field.Multiple)
                     {
-                        if (field.Multiple)
+                        ListBox listBox = new()
                         {
-                            ListBox listBox = new()
-                            {
-                                Width = 400,
-                                Height = 100,
-                                Margin = new Thickness(0, 5, 0, 15),
-                                SelectionMode = SelectionMode.Multiple
-                            };
-                            listBox.ItemsSource = field.Options;
-                            DynamicFieldsPanel.Children.Add(listBox);
-                            dynamicControls.Add((field, listBox));
-                        }
-                        else
-                        {
-                            ComboBox comboBox = new()
-                            {
-                                Width = 400,
-                                Height = 30,
-                                Margin = new Thickness(0, 5, 0, 15)
-                            };
-                            comboBox.ItemsSource = field.Options;
-                            comboBox.SelectedIndex = 0;
-                            DynamicFieldsPanel.Children.Add(comboBox);
-                            dynamicControls.Add((field, comboBox));
-                        }
+                            Width = 400,
+                            Height = 100,
+                            Margin = new Thickness(0, 5, 0, 15),
+                            SelectionMode = SelectionMode.Multiple
+                        };
+                        listBox.ItemsSource = field.Options;
+                        DynamicFieldsPanel.Children.Add(listBox);
+                        dynamicControls.Add((field, listBox));
                     }
-
+                    else
+                    {
+                        ComboBox comboBox = new()
+                        {
+                            Width = 400,
+                            Height = 30,
+                            Margin = new Thickness(0, 5, 0, 15)
+                        };
+                        comboBox.ItemsSource = field.Options;
+                        comboBox.SelectedIndex = -1;
+                        DynamicFieldsPanel.Children.Add(comboBox);
+                        dynamicControls.Add((field, comboBox));
+                    }
                 }
             }
 
@@ -210,42 +220,65 @@ namespace WhackerLinkAutoDispatch
                 sampleSize = 320;
                 delay = 20;
             }
+            else
+            {
+                // whackerlink defaults
+                sampleSize = 1600;
+                delay = 100;
+            }
 
-            var selectedChannelName = ChannelSelector.SelectedItem.ToString();
-            var selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+            // Safely compute selected channel
+            var selectedChannelName = ChannelSelector.SelectedItem as string;
+            var selectedChannel = !string.IsNullOrWhiteSpace(selectedChannelName)
+                ? dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName)
+                : null;
 
-            if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
+            if (dispatchTemplate?.Dvm == null || !dispatchTemplate.Dvm.Enabled)
             {
                 if (peer.IsConnected)
                     peer.Disconnect();
 
                 peer.Connect(dispatchTemplate.Network.Address, dispatchTemplate.Network.Port, dispatchTemplate.Network.AuthKey);
 
-                GRP_AFF_REQ req = new GRP_AFF_REQ
+                if (selectedChannel != null)
                 {
-                    DstId = selectedChannel.DstId,
-                    SrcId = dispatchTemplate.Network.SrcId,
-                    Site = dispatchTemplate.Network.Site
-                };
+                    GRP_AFF_REQ req = new GRP_AFF_REQ
+                    {
+                        DstId = selectedChannel.DstId,
+                        SrcId = dispatchTemplate.Network.SrcId,
+                        Site = dispatchTemplate.Network.Site
+                    };
 
-                peer.SendMessage(req.GetData());
+                    // it's okay to send immediately if your Peer queues while connecting;
+                    // otherwise consider sending on peer.OnOpen
+                    peer.SendMessage(req.GetData());
+                }
 
                 voiceChannel.SrcId = dispatchTemplate.Network.SrcId;
                 voiceChannel.Site = dispatchTemplate.Network.Site;
 
                 peer.OnOpen += () =>
                 {
-                    Dispatcher.Invoke(() => { Background = (Brush)new BrushConverter().ConvertFrom("#222222"); });
+                    Dispatcher.Invoke(() =>
+                    {
+                        Background = (Brush)new BrushConverter().ConvertFrom("#222222");
+                    });
                 };
 
                 peer.OnClose += () =>
                 {
-                    Dispatcher.Invoke(() => { Background = Brushes.Red; });
+                    Dispatcher.Invoke(() =>
+                    {
+                        Background = Brushes.Red;
+                    });
                 };
 
                 peer.OnReconnecting += () =>
                 {
-                    Dispatcher.Invoke(() => { Background = Brushes.Orange; });
+                    Dispatcher.Invoke(() =>
+                    {
+                        Background = Brushes.Orange;
+                    });
                 };
 
                 peer.OnVoiceChannelResponse += (GRP_VCH_RSP response) =>
@@ -253,9 +286,10 @@ namespace WhackerLinkAutoDispatch
                     if (!pressed)
                         return;
 
-                    if ((response.DstId != voiceChannel.DstId || response.SrcId != dispatchTemplate.Network.SrcId) || (ResponseType)response.Status != ResponseType.GRANT)
+                    if ((response.DstId != voiceChannel.DstId || response.SrcId != dispatchTemplate.Network.SrcId) ||
+                        (ResponseType)response.Status != ResponseType.GRANT)
                     {
-                        //Debug.WriteLine("Failed");
+                        // Debug.WriteLine("Failed");
                         return;
                     }
 
@@ -275,20 +309,21 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Start the dispatch
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private async void DispatchNow_Click(object sender, RoutedEventArgs e)
         {
             pressed = true;
 
-            if (dispatchTemplate.Dvm == null || !dispatchTemplate.Dvm.Enabled)
+            if (dispatchTemplate?.Dvm == null || !dispatchTemplate.Dvm.Enabled)
             {
                 Dispatcher.Invoke(() =>
                 {
-                    var selectedChannelName = ChannelSelector.SelectedItem.ToString();
-                    var selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+                    var selectedChannelName = ChannelSelector.SelectedItem as string;
+                    var selectedChannel = !string.IsNullOrWhiteSpace(selectedChannelName)
+                        ? dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName)
+                        : null;
 
-                    voiceChannel.DstId = selectedChannel.DstId;
+                    if (selectedChannel != null)
+                        voiceChannel.DstId = selectedChannel.DstId;
                 });
 
                 GRP_VCH_REQ vchReq = new GRP_VCH_REQ
@@ -299,17 +334,78 @@ namespace WhackerLinkAutoDispatch
                 };
 
                 peer.SendMessage(vchReq.GetData());
-            } else
+            }
+            else
             {
                 await SendPCMToPeer(peer);
+            }
+        }
+
+        private void SendCad_Click(object sender, RoutedEventArgs e)
+        {
+            if (dispatchTemplate?.Imperial != null && dispatchTemplate.Imperial.Enabled)
+            {
+                Task.Run(() =>
+                {
+                    ImperialCallRequest callReq = new ImperialCallRequest
+                    {
+                        CommId = dispatchTemplate.Imperial.CommId,
+                        Street = "Test Street",      // need
+                        CrossStreet = string.Empty,
+                        Postal = "00000",            // need
+                        City = string.Empty,
+                        County = string.Empty,
+                        Info = string.Empty,
+                        Nature = "Call Nature",      // need
+                        Status = "PENDING",          // static
+                        Priority = 2                 // static
+                    };
+
+                    List<string> messageParts = new();
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        foreach (var (field, control) in dynamicControls)
+                        {
+                            if (control is TextBox tb && !string.IsNullOrWhiteSpace(tb.Text))
+                            {
+                                if (field.IsImperialStreet) callReq.Street = tb.Text;
+                                if (field.IsImperialPostal) callReq.Postal = tb.Text;
+                                // FIX: Nature should map to Nature, not City
+                                if (field.IsImperialNature) callReq.Nature = tb.Text;
+                                if (field.IsImperialCrossStreet) callReq.CrossStreet = tb.Text;
+                                if (field.IsImperialNote) messageParts.Add(tb.Text);
+                            }
+                            else if (control is ComboBox cb)
+                            {
+                                var value = cb.SelectedItem?.ToString() ?? "";
+                                if (!string.IsNullOrWhiteSpace(value))
+                                {
+                                    if (field.IsImperialStreet) callReq.Street = value;
+                                    if (field.IsImperialPostal) callReq.Postal = value;
+                                    if (field.IsImperialNature) callReq.Nature = value;
+                                    if (field.IsImperialNote) messageParts.Add(value);
+                                }
+                            }
+                            else if (control is ListBox lb)
+                            {
+                                var selectedItems = lb.SelectedItems.Cast<string>();
+                                if (selectedItems.Any() && field.IsImperialNote)
+                                    messageParts.AddRange(selectedItems);
+                            }
+                        }
+                    });
+
+                    callReq.Info = string.Join(Environment.NewLine, messageParts);
+
+                    SendCallRequestAsync(callReq);
+                });
             }
         }
 
         /// <summary>
         /// Send the dispatch to the master
         /// </summary>
-        /// <param name="peer"></param>
-        /// <returns></returns>
         private async Task SendPCMToPeer(IPeer peer)
         {
             await playbackLock.WaitAsync();
@@ -319,93 +415,13 @@ namespace WhackerLinkAutoDispatch
 
                 Dispatcher.Invoke(() =>
                 {
-                    var selectedChannelName = ChannelSelector.SelectedItem.ToString();
-                    selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+                    var selectedChannelName = ChannelSelector.SelectedItem as string;
+                    selectedChannel = !string.IsNullOrWhiteSpace(selectedChannelName)
+                        ? dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName)
+                        : null;
 
-                    voiceChannel.DstId = selectedChannel.DstId;
-                });
-
-                bool sendCad = false;
-
-                Dispatcher.Invoke(() => { sendCad = (bool)SendCadBtn.IsChecked; });
-
-                Task.Factory.StartNew(() => {
-                    if (dispatchTemplate.Imperial != null) {
-                        if (dispatchTemplate.Imperial.Enabled && sendCad) {
-
-                            ImperialCallRequest callReq = new ImperialCallRequest
-                            {
-                                CommId = dispatchTemplate.Imperial.CommId,
-                                Street = "Test Street",             // need
-                                CrossStreet = string.Empty,
-                                Postal = "00000",                   // need
-                                City = string.Empty,
-                                County = string.Empty,
-                                Info = string.Empty,
-                                Nature = "Call Nature",             // need
-                                Status = "PENDING",                 // static
-                                Priority = 2                        // static
-                            };
-
-                            List<string> messageParts = new();
-
-                            Dispatcher.Invoke(() =>
-                            {
-                                foreach (var (field, control) in dynamicControls)
-                                {
-                                    if (control is TextBox tb)
-                                    {
-                                        if (!string.IsNullOrWhiteSpace(tb.Text))
-                                        {
-                                            if (field.IsImperialStreet)
-                                                callReq.Street = tb.Text;
-
-                                            if (field.IsImperialPostal)
-                                                callReq.Postal = tb.Text;
-
-                                            if (field.IsImperialNature)
-                                                callReq.Nature = tb.Text;
-
-                                            if (field.IsImperialNote)
-                                                messageParts.Add(tb.Text);
-                                        }
-                                    }
-                                    else if (control is ComboBox cb)
-                                    {
-                                        var value = cb.SelectedItem?.ToString() ?? "";
-
-                                        if (!string.IsNullOrWhiteSpace(value))
-                                        {
-                                            if (field.IsImperialStreet)
-                                                callReq.Street = value;
-
-                                            if (field.IsImperialPostal)
-                                                callReq.Postal = value;
-
-                                            if (field.IsImperialNature)
-                                                callReq.Nature = value;
-
-                                            if (field.IsImperialNote)
-                                                messageParts.Add(value);
-                                        }
-                                    }
-                                    else if (control is ListBox lb)
-                                    {
-                                        var selectedItems = lb.SelectedItems.Cast<string>();
-                                        if (selectedItems.Any())
-                                        {
-                                            if (field.IsImperialNote)
-                                                messageParts.AddRange(selectedItems);
-                                        }
-                                    }
-                                }
-                            });
-
-                            callReq.Info = string.Join(Environment.NewLine, messageParts);
-
-                            SendCallRequestAsync(callReq);
-                        }
-                    }
+                    if (selectedChannel != null)
+                        voiceChannel.DstId = selectedChannel.DstId;
                 });
 
                 byte[] firstPcm = await GetPCMDataFromMurf();
@@ -429,22 +445,23 @@ namespace WhackerLinkAutoDispatch
                 if (dispatchTemplate.Repeat)
                     await SendNetworkPCM(secondPcm, true);
 
-
-                if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
+                if (dispatchTemplate?.Dvm == null || !dispatchTemplate.Dvm.Enabled)
                 {
-                    GRP_VCH_RLS vchRelease = new GRP_VCH_RLS
+                    if (selectedChannel != null)
                     {
-                        Channel = voiceChannel.Frequency,
-                        SrcId = dispatchTemplate.Network.SrcId,
-                        DstId = selectedChannel.DstId,
-                        Site = dispatchTemplate.Network.Site
-                    };
+                        GRP_VCH_RLS vchRelease = new GRP_VCH_RLS
+                        {
+                            Channel = voiceChannel.Frequency,
+                            SrcId = dispatchTemplate.Network.SrcId,
+                            DstId = selectedChannel.DstId,
+                            Site = dispatchTemplate.Network.Site
+                        };
 
-                    peer.SendMessage(vchRelease.GetData());
+                        peer.SendMessage(vchRelease.GetData());
+                        voiceChannel.Frequency = null;
 
-                    voiceChannel.Frequency = null;
-
-                    Console.WriteLine("Sent voice channel release");
+                        Console.WriteLine("Sent voice channel release");
+                    }
                 }
 
                 pressed = false;
@@ -458,8 +475,6 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Send PCM to the network
         /// </summary>
-        /// <param name="second"></param>
-        /// <returns></returns>
         private async Task<bool> SendNetworkPCM(byte[] pcmData, bool second = false)
         {
             Console.WriteLine($"Total PCM data length: {pcmData.Length} bytes. Sending in {sampleSize}-byte chunks...");
@@ -476,7 +491,7 @@ namespace WhackerLinkAutoDispatch
 
                 Console.WriteLine($"Sending chunk: {i / sampleSize + 1} | Size: {chunk.Length} bytes");
 
-                if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
+                if (dispatchTemplate?.Dvm == null || !dispatchTemplate.Dvm.Enabled)
                 {
                     AudioPacket packet = new AudioPacket
                     {
@@ -489,22 +504,20 @@ namespace WhackerLinkAutoDispatch
                 else
                 {
                     byte[] udpPayload = new byte[324]; // length + PCM
-
-
                     byte[] lengthBytes = BitConverter.GetBytes(sampleSize);
-
                     Array.Reverse(lengthBytes);
 
                     Array.Copy(lengthBytes, udpPayload, 4);
                     Array.Copy(chunk, 0, udpPayload, 4, sampleSize);
 
-                    //Debug.WriteLine(BitConverter.ToString(udpPayload));
-
                     SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
                 }
 
                 int sleepTime = delay - (int)stopwatch.ElapsedMilliseconds;
-                while (stopwatch.ElapsedMilliseconds < delay) { /* stub */ }
+                while (stopwatch.ElapsedMilliseconds < delay)
+                {
+                    /* stub */
+                }
             }
 
             return true;
@@ -513,8 +526,6 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Get PCM from the Murf API
         /// </summary>
-        /// <param name="second"></param>
-        /// <returns></returns>
         private async Task<byte[]> GetPCMDataFromMurf(bool second = false)
         {
             try
@@ -535,14 +546,18 @@ namespace WhackerLinkAutoDispatch
                         if (control is TextBox tb)
                         {
                             if (!string.IsNullOrWhiteSpace(tb.Text))
-                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty ? $"{field.SaidName} {tb.Text}" : tb.Text) + field.Ender);
+                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty
+                                    ? $"{field.SaidName} {tb.Text}"
+                                    : tb.Text) + field.Ender);
                         }
                         else if (control is ComboBox cb)
                         {
                             var value = cb.SelectedItem?.ToString() ?? "";
 
                             if (!string.IsNullOrWhiteSpace(value))
-                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty ? $"{field.SaidName} {value}" : value) + field.Ender);
+                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty
+                                    ? $"{field.SaidName} {value}"
+                                    : value) + field.Ender);
                         }
                         else if (control is ListBox lb)
                         {
@@ -550,7 +565,9 @@ namespace WhackerLinkAutoDispatch
                             if (selectedItems.Any())
                             {
                                 var joined = string.Join(field.Separator ?? ", ", selectedItems);
-                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty ? $"{field.SaidName} {joined}" : joined) + field.Ender);
+                                messageParts.Add((field.IncludeFieldName && field.SaidName != string.Empty
+                                    ? $"{field.SaidName} {joined}"
+                                    : joined) + field.Ender);
                             }
                         }
                     }
@@ -604,9 +621,6 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Send wav file to the master
         /// </summary>
-        /// <param name="peer"></param>
-        /// <param name="filePath"></param>
-        /// <returns></returns>
         private async Task SendWavFileToPeer(IPeer peer, string filePath)
         {
             if (!File.Exists(filePath))
@@ -627,8 +641,6 @@ namespace WhackerLinkAutoDispatch
 
                     Stopwatch stopwatch = new Stopwatch();
 
-                    //Debug.WriteLine($"Sending '{filePath}' ({pcmData.Length} bytes) before TTS audio.");
-
                     for (int i = 0; i < pcmData.Length; i += sampleSize)
                     {
                         stopwatch.Restart();
@@ -637,7 +649,7 @@ namespace WhackerLinkAutoDispatch
                         byte[] chunk = new byte[sampleSize];
                         Array.Copy(pcmData, i, chunk, 0, remaining);
 
-                        if (dispatchTemplate == null || !dispatchTemplate.Dvm.Enabled)
+                        if (dispatchTemplate?.Dvm == null || !dispatchTemplate.Dvm.Enabled)
                         {
                             AudioPacket packet = new AudioPacket
                             {
@@ -651,22 +663,20 @@ namespace WhackerLinkAutoDispatch
                         else
                         {
                             byte[] udpPayload = new byte[324]; // length + PCM
-
-
                             byte[] lengthBytes = BitConverter.GetBytes(sampleSize);
-
                             Array.Reverse(lengthBytes);
 
                             Array.Copy(lengthBytes, udpPayload, 4);
                             Array.Copy(chunk, 0, udpPayload, 4, sampleSize);
 
-                            // Debug.WriteLine(BitConverter.ToString(udpPayload));
-
                             SendUDP(dispatchTemplate.Dvm.Address, dispatchTemplate.Dvm.Port, udpPayload);
                         }
 
                         int sleepTime = delay - (int)stopwatch.ElapsedMilliseconds;
-                        while (stopwatch.ElapsedMilliseconds < delay) { /* stub */ }
+                        while (stopwatch.ElapsedMilliseconds < delay)
+                        {
+                            /* stub */
+                        }
                     }
                 }
 
@@ -681,9 +691,6 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Helper to send byte[] to UDP endpoint
         /// </summary>
-        /// <param name="ipAddress"></param>
-        /// <param name="port"></param>
-        /// <param name="data"></param>
         public static void SendUDP(string ipAddress, int port, byte[] data)
         {
             using (UdpClient udpClient = new UdpClient())
@@ -691,10 +698,7 @@ namespace WhackerLinkAutoDispatch
                 try
                 {
                     IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
-
                     udpClient.Send(data, data.Length, endPoint);
-
-                    // Console.WriteLine($"Sent {data.Length} bytes to {ipAddress}:{port}");
                 }
                 catch (Exception ex)
                 {
@@ -727,8 +731,6 @@ namespace WhackerLinkAutoDispatch
         /// <summary>
         /// Helper to convert wav data to raw PCM
         /// </summary>
-        /// <param name="wavData"></param>
-        /// <returns></returns>
         private byte[] ConvertWavToPcm(byte[] wavData)
         {
             using (var wavStream = new MemoryStream(wavData))
@@ -743,8 +745,21 @@ namespace WhackerLinkAutoDispatch
 
         private void ChannelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            string selectedChannelName = ChannelSelector.SelectedItem.ToString();
-            Channel selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+            if (_suppressChannelSelectionChanged) return;
+            if (dispatchTemplate == null) return;
+            if (ChannelSelector.SelectedItem == null) return;
+
+            var selectedChannelName = ChannelSelector.SelectedItem as string;
+            if (string.IsNullOrWhiteSpace(selectedChannelName)) return;
+
+            var selectedChannel = dispatchTemplate.Channels.FirstOrDefault(c => c.Name == selectedChannelName);
+            if (selectedChannel == null) return;
+
+            if (peer == null || !peer.IsConnected)
+            {
+                Debug.WriteLine("Master connection not established; skipping aff request on selection change.");
+                return;
+            }
 
             GRP_AFF_REQ affReq = new GRP_AFF_REQ
             {
@@ -754,7 +769,6 @@ namespace WhackerLinkAutoDispatch
             };
 
             peer.SendMessage(affReq.GetData());
-
             Console.WriteLine("Sent WLINK master aff " + selectedChannel.DstId);
         }
     }

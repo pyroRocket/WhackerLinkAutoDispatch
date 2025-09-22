@@ -38,6 +38,8 @@ namespace WhackerLinkAutoDispatch
         public bool IsImperialPostal { get; set; } = false;
         public bool IsImperialNature { get; set; } = false;
         public bool IsImperialNote { get; set; } = false;
+        public bool Searchable { get; set; } = false;
+        public bool IsImperialCrossStreet { get; set; } = false;
         public List<string> Options { get; set; }
     }
 }

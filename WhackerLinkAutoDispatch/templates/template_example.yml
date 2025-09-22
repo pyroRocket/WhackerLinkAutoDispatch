@@ -5,15 +5,15 @@ murfApiKey: ""
 repeat: true
 
 channels:
-    - name: "Channel 1"
-      dstId: "2001"
+    - name: "EMS COMM"
+      dstId: "70001"
     - name: "Channel 2"
       dstId: "2002"
 
 network:
-    address: "127.0.0.1"
+    address: ""
     port: 3000
-    authKey: "UNATH"
+    authKey: ""
     srcId: 192
     site:
         name: "Central Site"
@@ -29,35 +29,265 @@ dvm:
 
 ttsConfig:
     pitch: -8
-    rate: 10
+    rate: 15
 
 imperial:
-    enabled: false
-    commId: COMMUNITY_ID
-    apiKey: API_KEY
+    enabled: true
+    commId: 1749530171705x174380936199143420
+    apiKey: X6MELQXTNDL4JJ34N6R6U4J63EYSET
 
 # Imperial notes:
 # isImperialNote: true - this is used for adding a field to the cad notes
 # isImperialNature: true - REQUIRED FOR IMPERIAL this is used for making a field be the call notes in the CAD (USE ONLY ONCE)
 # isImperialStreet: true - REQUIRED FOR IMPERIAL this is used for making a field be the street in the CAD (USE ONLY ONCE)
 # isImperialPostal: true - REQUIRED FOR IMPERIAL this is used for making a field be the postal in the CAD (USE ONLY ONCE)  
+# isImperialCrossStreet: true - REQUIRED FOR IMPERIAL this is used for making a field be the postal in the CAD (USE ONLY ONCE)  
 
 fields:
-  - name: "Departments"
+  - name: "Fire Unit Assigment"
     type: "Dropdown"
     multiple: true
     separator: "..."
     ender: "... "
-    options: ["Squad 21", "Engine 21", "Station 22", "Escambia Engine 4", "Tanker 11", "Ladder 21", "Chiefs"]
+    options: ["Engine 29", "Engine 29 Bravo", "Station 22", "Escambia Engine 4", "Tanker 11", "Ladder 21", "Chiefs"]
+
+  - name: "EMS Unit Assigment"
+    type: "Dropdown"
+    multiple: true
+    separator: "..."
+    ender: "... "
+    options: [ "Medic 29", "Medic 2", "Zone 1", "Command"]
 
   - name: "Call Type"
     type: "Dropdown"
     ender: ".... "
-    options: ["Residential structure fire", "Confirmed residential structure fire", "Activated automatic fire alarm", "Medical"]
+    options: ["01 - ABDOMINAL PAIN",
+      "01 ALPHA - ABDOMINAL PAIN",
+      "01 CHARLIE - ABDOMINAL PAIN",
+      "01 DELTA - ABDOMINAL PAIN",
+      "02 - ALLERGIC REACTION",
+      "02 ALPHA - ALLERGIC REACTION",
+      "02 BRAVO - ALLERGIC REACTION",
+      "02 CHARLIE - ALLERGIC REACTION",
+      "02 DELTA - ALLERGIC REACTION",
+      "02 ECHO - ALLERGIC REACTION",
+      "03 - ANIMAL BITE",
+      "03 ALPHA - ANIMAL BITE",
+      "03 BRAVO - ANIMAL BITE",
+      "03 DELTA - ANIMAL BITE",
+      "03 DELTA - ANIMAL BITE (ARREST)",
+      "04 - ASSAULT",        
+      "04 ALPHA - ASSAULT",
+      "04 BRAVO - ASSAULT ",
+      "04 DELTA - ASSAULT (ARREST)",
+      "04 DELTA - ASSAULT (MULTI PI)",
+      "05 - BACK PAIN",
+      "05 ALPHA - BACK PAIN",
+      "05 CHARLIE - BACK PAIN",
+      "05 DELTA - BACK PAIN",
+      "06 - DIFF BREATHING",
+      "06 CHARLIE - DIFF BREATHING",
+      "06 DELTA - DIFF BREATHING",
+      "06 ECHO - DIFF BREATHING (INEFFECTIVE)",
+      "07 - SUBJECT BURNED",
+      "07 ALPHA - SUBJECT BURNED",
+      "07 BRAVO - SUBJECT BURNED",
+      "07 CHARLIE - SUBJECT BURNED",
+      "07 DELTA - SUBJECT BURNED",
+      "07 DELTA - SUBJECT BURNED (MULTI PI)",
+      "07 ECHO - SUBJECT BURNED (ARREST/ON FIRE)",
+      "08 - HAZMAT",
+      "08 ALPHA - HAZMAT INCIDENT",
+      "08 BRAVO - HAZMAT INCIDENT",
+      "08 CHARLIE - HAZMAT INCIDENT",
+      "08 DELTA - HAZMAT INCIDENT",
+      "08 DELTA - HAZMAT INCIDENT (ARREST)",
+      "08 DELTA - HAZMAT INCIDENT (MULTI PI)",
+      "09 - CODE BLUE",
+      "09 BRAVO - CODE BLUE/OBVIOUS DEATH",
+      "09 DELTA - CODE BLUE/INEFFECTIVE BREATHING",
+      "09 ECHO - CODE BLUE",
+      "09 ECHO - CODE BLUE/HANGING",
+      "10 - CHEST PAIN",
+      "10 ALPHA - CHEST PAIN",
+      "10 CHARLIE - CHEST PAIN",
+      "10 DELTA - CHEST PAIN",
+      "11 - CHOKING",
+      "11 ALPHA - CHOKING",
+      "11 DELTA - CHOKING",
+      "11 ECHO - CHOKING",
+      "12 - SEIZURES",
+      "12 ALPHA - SEIZURES",
+      "12 BRAVO - SEIZURES",
+      "12 CHARLIE - SEIZURES",
+      "12 DELTA 1 - SEIZURES (ARREST)",
+      "12 DELTA - SEIZURES",
+      "13 - DIABETIC EMERGENCY",
+      "13 ALPHA - DIABETIC EMERGENCY",
+      "13 CHARLIE - DIABETIC EMERGENCY",
+      "13 DELTA - DIABETIC EMERGENCY",
+      "14 - DROWNING",
+      "14 ALPHA - DROWNING",
+      "14 BRAVO - DROWNING",
+      "14 CHARLIE - DROWNING",
+      "14 DELTA - DROWNING",
+      "14 ECHO - DROWNING (ARREST)",
+      "15 - ELECTROCUTION",
+      "15 CHARLIE - ELECTROCUTION",
+      "15 DELTA - ELECTROCUTION",
+      "15 DELTA - ELECTROCUTION (MULTI PI)",
+      "15 ECHO - ELECTROCUTION (ARREST)",
+      "16 - EYE INJURY",
+      "16 ALPHA - EYE INJURY",
+      "16 BRAVO - EYE INJURY",
+      "16 DELTA - EYE INJURY",
+      "17 - SUBJECT FELL",
+      "17 ALPHA - SUBJECT FELL",
+      "17 BRAVO - SUBJECT FELL",
+      "17 DELTA - SUBJECT FELL",
+      "17 DELTA - SUBJECT FELL (LONG FALL)",
+      "18 - HEADACHE",
+      "18 ALPHA - HEADACHE",
+      "18 BRAVO - HEADACHE",
+      "18 CHARLIE - HEADACHE",
+      "19 - CARDIAC",
+      "19 ALPHA - CARDIAC",
+      "19 BRAVO - CARDIAC",
+      "19 CHARLIE - CARDIAC",
+      "19 DELTA - CARDIAC",
+      "20 - HEAT/COLD EXPOSURE",
+      "20 ALPHA - HEAT/COLD EXPOSURE",
+      "20 BRAVO - HEAT/COLD EXPOSURE",
+      "20 CHARLIE - HEAT/COLD EXPOSURE",
+      "20 DELTA - HEAT/COLD EXPOSURE",
+      "21 - HEMORRHAGE",
+      "21 ALPHA - HEMORRHAGE",
+      "21 BRAVO - HEMORRHAGE",
+      "21 CHARLIE - HEMORRHAGE",
+      "21 DELTA - HEMORRHAGE",
+      "23 - OVERDOSE/POISONING",
+      "23 ALPHA - OVERDOSE/POISONING",
+      "23 BRAVO - OVERDOSE/POISONING",
+      "23 CHARLIE - OVERDOSE/POISONING",
+      "23 DELTA - OVERDOSE/POISONING",
+      "23 ECHO - OVERDOSE/POISONING (ARREST)",
+      "25 - ABNORMAL BEHAVIOR ",
+      "25 ALPHA - ABNORMAL BEHAVIOR ",
+      "25 BRAVO - ABNORMAL BEHAVIOR ",
+      "25 DELTA - ABNORMAL BEHAVIOR ",
+      "26 - SICK PERSON",
+      "26 ALPHA - SICK PERSON",
+      "26 BRAVO - SICK PERSON",
+      "26 CHARLIE - SICK PERSON",
+      "26 DELTA - SICK PERSON",
+      "26 OMEGA - SICK PERSON",
+      "27 - SHOOTING/STABBING",
+      "27 ALPHA - SHOOTING/STABBING",
+      "27 BRAVO - SHOOTING/STABBING",
+      "27 DELTA 1 - SHOOTING/STABBING (ARREST)",
+      "27 DELTA 5 - SHOOTING/STABBING (MULTI PI)",
+      "27 DELTA - SHOOTING/STABBING",
+      "28 - STROKE",
+      "28 ALPHA - STROKE",
+      "28 BRAVO - STROKE",
+      "28 CHARLIE - STROKE",
+      "30 - INJURED PERSON",
+      "30 ALPHA - INJURED PERSON",
+      "30 BRAVO - INJURED PERSON",
+      "30 DELTA - INJURED PERSON",
+      "31 - UNCONSCIOUS PERSON",
+      "31 ALPHA - UNCONSCIOUS PERSON",
+      "31 BRAVO - UNCONSCIOUS PERSON",
+      "31 CHARLIE - UNCONSCIOUS PERSON",
+      "31 DELTA - UNCONSCIOUS PERSON",
+      "31 ECHO - UNCONSCIOUS PERSON (ARREST)",
+      "32 - UNKNOWN EMS CALL",
+      "33 - TRANSFER ",
+      "33 ALPHA - TRANSFER ",
+      "33 CHARLIE - TRANSFER ",
+      "33 DELTA - TRANSFER (ARREST)",
+      "AIR ALERT 1 - STANDBY",
+      "AIR ALERT 2 - STANDBY",
+      "AIR ALERT 3 - AIRCRAFT DOWN",
+      "AIR ALERT 3 - CRASH AT AIRPORT",
+      "ASSIST LAW ENFORCEMENT",
+      "AUTOMATIC CRASH NOTIFICATION",
+      "BOMB THREAT",
+      "BRUSH FIRE",
+      "COLLAPSE RESCUE",
+      "CONFINED SPACE RESCUE",
+      "DELTA - MVA/CARDIAC ARREST",
+      "DELTA  - MVA/PEDESTRIAN STRUCK",
+      "DELTA - MVA HIGH VELOCITY",
+      "DELTA - MVA W/ ENTRAPMENT/PINNED",
+      "DELTA - MVA W/ ROLLOVER",
+      "DISABLED MOTORIST",
+      "ED TRANSFER - CODE STEMI",
+      "ED TRANSFER - CODE STROKE",
+      "ED TRANSFER - TRAUMA",
+      "ELECTRICAL INCIDENT",
+      "ELEVATOR RESCUE",
+      "EMS ASSIST LAW ENFORCEMENT",
+      "EMS - SPECIAL EVENT STANDBY",
+      "ENTRAPMENT - MACHINERY",
+      "ENTRAPMENT - OTHER",
+      "EOC OPERATIONS",
+      "EXPLOSION",
+      "FIRE ALARM",
+      "FIRE ALARM SERVICE",
+      "FIRE ASSIST LAW ENFORCEMENT",
+      "FIRE - SPECIAL EVENT STANDBY",
+      "FLOODING",
+      "FUEL SPILL",
+      "GAS LEAK",
+      "HAZMAT INCIDENT",
+      "HIGH ANGLE RESCUE",
+      "LOW ANGLE RESCUE",
+      "MISSING/FOUND PERSON",
+      "MOTOR VEHICLE ACCIDENT",
+      "ODOR INVESTIGATION",
+      "OUTSIDE FIRE",
+      "PUBLIC ASSISTANCE - EMS",
+      "PUBLIC ASSISTANCE - FIRE",
+      "ROAD HAZARD",
+      "SMOKE INVESTIGATION",
+      "STRUCTURE FIRE - COMERICAL",
+      "STRUCTURE FIRE - HAZMAT",
+      "STRUCTURE FIRE - INDUSTRIAL",
+      "STRUCTURE FIRE - RESIDENTIAL",
+      "SUICIDE ATTEMPT/THREAT",
+      "TRENCH RESCUE",
+      "UNKNOWN TYPE CALL",
+      "VEHICLE BROKEN DOWN",
+      "VEHICLE FIRE",
+      "WATER RESCUE",
+      "WOODS FIRE"]
+    isImperialNature: true
+    searchable: true
 
-  - name: "Address"
+  - name: "Business Name (Optional)"
+    saidName: "At"
+    type: "TextBox"
+    includeFieldName: true
+    ender: ".... "
+
+  - name: "Postal"
+    type: "TextBox"
+    saidName: "Postal"
+    includeFieldName: true
+    ender: ".... "
+    isImperialPostal: true
+    
+  - name: "Street Name"
     type: "TextBox"
     includeFieldName: false
+    ender: ".... "
+    isImperialStreet: true
+    
+  - name: "Cross Street (Optional)"
+    saidName: "Cross of"
+    type: "TextBox"
+    includeFieldName: true
     ender: ".... "
 
   - name: "Channel"

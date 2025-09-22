@@ -1,7 +1,193 @@
 ﻿<Window x:Class="WhackerLinkAutoDispatch.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WhackerLink AVD" Height="600" Width="1000" Background="#222222">
+        Title="NOODLE AVD" Height="850" Width="490" Background="#FFF2F2F2">
+
+    <!-- Shared styles -->
+    <Window.Resources>
+        <!-- Chrome gradient used by buttons & ComboBox -->
+        <LinearGradientBrush x:Key="ChromeGradient" StartPoint="0.5,0" EndPoint="0.5,1">
+            <GradientStop Color="#FFF0F0F0" Offset="0.485"/>
+            <GradientStop Color="#FFDBDBDB" Offset="0.517"/>
+        </LinearGradientBrush>
+
+        <!-- Make general text black -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+
+        <!-- Base button -->
+        <Style x:Key="AppButton" TargetType="Button">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Background" Value="{StaticResource ChromeGradient}"/>
+            <Setter Property="BorderBrush" Value="#FFC1C1C1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="2"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#FF9A9A9A"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Green button for Send CAD -->
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                        <GradientStop Color="#FF58C472" Offset="0.0"/>
+                        <GradientStop Color="#FF2E9E52" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="BorderBrush" Value="#FF2E8E4A"/>
+        </Style>
+
+        <!-- Red button for Send to Queue -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                        <GradientStop Color="#FFFF6D6D" Offset="0.0"/>
+                        <GradientStop Color="#FFCC3D3D" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="BorderBrush" Value="#FFB23A3A"/>
+        </Style>
+
+        <!-- ComboBox with button chrome + centered, larger overlay text -->
+        <Style x:Key="ChromeComboBoxFloating" TargetType="ComboBox">
+            <Setter Property="Height" Value="60"/>
+            <Setter Property="Width" Value="160"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Background" Value="{StaticResource ChromeGradient}"/>
+            <Setter Property="BorderBrush" Value="#FFC1C1C1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <!-- Chrome -->
+                            <Border x:Name="Bg"
+                                    CornerRadius="2"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"/>
+
+                            <!-- Centered, larger overlay text -->
+                            <TextBlock x:Name="OverlayText"
+                                       IsHitTestVisible="False"
+                                       Margin="8,0,28,0"          
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       TextAlignment="Center"
+                                       Foreground="Black"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Visibility="Visible"/>
+
+                            <!-- In-box content + arrow (hidden when selection exists) -->
+                            <Grid IsHitTestVisible="False" Margin="8,0,24,0">
+                                <ContentPresenter x:Name="ContentHost"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Center"
+                                                  Opacity="0"/>
+                            </Grid>
+                            <Path Data="M 0 0 L 3.5 4 L 7 0 Z"
+                                  Width="7" Height="4" Fill="#666"
+                                  HorizontalAlignment="Right" Margin="0,0,9,0"
+                                  VerticalAlignment="Center" IsHitTestVisible="False"/>
+
+                            <!-- Full-surface click area -->
+                            <ToggleButton x:Name="ToggleButton"
+                                          Background="Transparent"
+                                          BorderBrush="{x:Null}"
+                                          Focusable="False"
+                                          IsTabStop="False"
+                                          ClickMode="Press"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                                      RelativeSource={RelativeSource TemplatedParent}}"/>
+
+                            <!-- Dropdown -->
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide">
+                                <Border Margin="0,2,0,0"
+                                        CornerRadius="2"
+                                        Background="White"
+                                        BorderBrush="#FFC1C1C1"
+                                        BorderThickness="1"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer CanContentScroll="True">
+                                        <StackPanel IsItemsHost="True"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <!-- Triggers -->
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="BorderBrush" Value="#FF9A9A9A"/>
+                            </Trigger>
+
+                            <!-- No selection: hide overlay, show in-box content -->
+                            <Trigger Property="SelectedIndex" Value="-1">
+                                <Setter TargetName="OverlayText" Property="Visibility" Value="Collapsed"/>
+                                <Setter TargetName="ContentHost" Property="Opacity" Value="1"/>
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -14,21 +200,51 @@
             <StackPanel Name="DynamicFieldsPanel"/>
         </ScrollViewer>
 
-        <!-- Bottom Buttons: Clear & Dispatch Now -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center">
-            <Button Content="Load Call Structure" Height="40" Width="150" Margin="10" HorizontalAlignment="Left"
-                VerticalAlignment="Top" Click="LoadTemplate_Click" Cursor="Hand"/>
-            <ComboBox x:Name="ChannelSelector" Height="40" Width="160" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" SelectionChanged="ChannelSelector_SelectionChanged"/>
-            <Label x:Name="AddCadLbl" Foreground="White" Height="26">Add CAD</Label>
-            <CheckBox x:Name="SendCadBtn" Height="40" Width="19" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+        <!-- Left: Load Template + Channel selector -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Left"
+                    Margin="10,0,0,0"
+                    VerticalAlignment="Center">
+
+            <Button Height="60" Width="60" Margin="10"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Cursor="Hand" Click="LoadTemplate_Click"
+                    Style="{StaticResource AppButton}">
+                <Image Source="pack://application:,,,/assets/config2.png" Stretch="UniformToFill"/>
+            </Button>
+
+            <ComboBox x:Name="ChannelSelector"
+                      Style="{StaticResource ChromeComboBoxFloating}"
+                      HorizontalContentAlignment="Center"
+                      VerticalContentAlignment="Center"
+                      SelectionChanged="ChannelSelector_SelectionChanged"/>
         </StackPanel>
 
-        <!-- Bottom Buttons: Clear & Dispatch Now -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" VerticalAlignment="Top">
-            <Button Content="Reset Entry" Height="40" Width="150" Margin="0,0,10,0" Cursor="Hand" Click="ClearFields_Click"/>
+        <!-- Right: Reset / Send CAD (green) / Send to Queue (red) -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="10"
+                    VerticalAlignment="Top">
 
-            <Button Content="Send to Queue" Height="40" Width="150"
-                    Background="#FF4B4B" Foreground="White" Cursor="Hand" Click="DispatchNow_Click"/>
+            <Button Height="60" Width="60" Margin="0,0,10,0"
+                    Cursor="Hand" Click="ClearFields_Click"
+                    Style="{StaticResource AppButton}">
+                <Image Source="pack://application:,,,/assets/refresh.png" Margin="8,0,8,0"/>
+            </Button>
+
+            <Button x:Name="SendCadBtn"
+                    Height="60" Width="60" Margin="0,0,10,0"
+                    Cursor="Hand" Click="SendCad_Click"
+                    Style="{StaticResource SuccessButton}">
+                <Image Source="pack://application:,,,/assets/implogoround2.png" Margin="8,0,8,0"/>
+            </Button>
+
+            <Button Height="60" Width="60"
+                    Cursor="Hand" Click="DispatchNow_Click"
+                    Style="{StaticResource DangerButton}">
+                <Image Source="pack://application:,,,/assets/send.png" Margin="8,0,8,0"/>
+            </Button>
+            
         </StackPanel>
     </Grid>
 </Window>
